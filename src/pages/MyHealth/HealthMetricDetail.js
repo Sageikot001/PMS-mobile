@@ -92,7 +92,7 @@ const HealthMetricDetail = () => {
         </View>
         <Text style={styles.didYouKnowText}>{metric.didYouKnow}</Text>
       </View>
-
+    
       <View style={styles.inputSection}>
         <Text style={styles.sectionTitle}>Add New Entry</Text>
         <View style={styles.inputContainer}>
