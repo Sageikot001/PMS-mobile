@@ -27,6 +27,10 @@ const pharmacyData = {
                   dosage: '500mg',
                   quantity: 100,
                   inStock: true,
+                  expiryDate: '2025-06-15',
+                  batchNumber: 'TYL2024001',
+                  manufacturer: 'Johnson & Johnson',
+                  storageInstructions: 'Store below 25°C in a dry place'
                 },
                 {
                   id: 'drug_1b',
@@ -37,6 +41,10 @@ const pharmacyData = {
                   dosage: '200mg',
                   quantity: 85,
                   inStock: true,
+                  expiryDate: '2024-12-20',
+                  batchNumber: 'ADV2024002',
+                  manufacturer: 'Pfizer',
+                  storageInstructions: 'Store at room temperature'
                 },
                 {
                   id: 'drug_1c',
@@ -47,6 +55,10 @@ const pharmacyData = {
                   dosage: '325mg',
                   quantity: 120,
                   inStock: true,
+                  expiryDate: '2024-09-30',
+                  batchNumber: 'BAY2024003',
+                  manufacturer: 'Bayer AG',
+                  storageInstructions: 'Keep in a cool, dry place'
                 }
               ],
               'Diabetes': [
@@ -59,6 +71,10 @@ const pharmacyData = {
                   dosage: '850mg',
                   quantity: 50,
                   inStock: true,
+                  expiryDate: '2025-03-15',
+                  batchNumber: 'GLU2024001',
+                  manufacturer: 'Merck',
+                  storageInstructions: 'Store below 30°C'
                 },
                 {
                   id: 'drug_2b',
@@ -69,6 +85,10 @@ const pharmacyData = {
                   dosage: '2mg',
                   quantity: 60,
                   inStock: true,
+                  expiryDate: '2024-11-25',
+                  batchNumber: 'AMA2024002',
+                  manufacturer: 'Sanofi',
+                  storageInstructions: 'Store in original container'
                 }
               ],
               'Antibiotics': [
@@ -81,6 +101,10 @@ const pharmacyData = {
                   dosage: '500mg',
                   quantity: 40,
                   inStock: true,
+                  expiryDate: '2024-08-10',
+                  batchNumber: 'AMX2024001',
+                  manufacturer: 'GSK',
+                  storageInstructions: 'Store below 25°C'
                 }
               ]
             }
@@ -106,6 +130,10 @@ const pharmacyData = {
                   dosage: '500mg',
                   quantity: 80,
                   inStock: true,
+                  expiryDate: '2025-04-20',
+                  batchNumber: 'TYL2024004',
+                  manufacturer: 'Johnson & Johnson',
+                  storageInstructions: 'Store below 25°C in a dry place'
                 }
               ],
               'Hypertension': [
@@ -118,6 +146,10 @@ const pharmacyData = {
                   dosage: '10mg',
                   quantity: 45,
                   inStock: true,
+                  expiryDate: '2025-01-15',
+                  batchNumber: 'ZES2024001',
+                  manufacturer: 'AstraZeneca',
+                  storageInstructions: 'Store at room temperature'
                 }
               ]
             }
@@ -152,6 +184,10 @@ const pharmacyData = {
                   dosage: '500mg',
                   quantity: 150,
                   inStock: true,
+                  expiryDate: '2025-05-10',
+                  batchNumber: 'EMZ2024001',
+                  manufacturer: 'Emzor',
+                  storageInstructions: 'Store below 25°C'
                 }
               ],
               'Mental Health': [
@@ -164,6 +200,10 @@ const pharmacyData = {
                   dosage: '50mg',
                   quantity: 30,
                   inStock: true,
+                  expiryDate: '2024-10-05',
+                  batchNumber: 'ZOL2024001',
+                  manufacturer: 'Pfizer',
+                  storageInstructions: 'Store at room temperature'
                 }
               ]
             }
@@ -193,6 +233,10 @@ const pharmacyData = {
               dosage: '500mg',
               quantity: 75,
               inStock: true,
+              expiryDate: '2025-04-15',
+              batchNumber: 'EMZ2024002',
+              manufacturer: 'Emzor',
+              storageInstructions: 'Store below 25°C'
             }
           ],
           'First Aid': [
@@ -204,6 +248,10 @@ const pharmacyData = {
               description: 'For wound cleaning',
               quantity: 50,
               inStock: true,
+              expiryDate: '2025-03-30',
+              batchNumber: 'DET2024001',
+              manufacturer: 'Dettol',
+              storageInstructions: 'Store below 25°C'
             }
           ]
         }
@@ -244,6 +292,10 @@ const searchPharmaciesAndDrugs = (query) => {
             results.drugs.push({
               ...drug,
               category,
+              expiryDate: drug.expiryDate,
+              batchNumber: drug.batchNumber,
+              manufacturer: drug.manufacturer,
+              storageInstructions: drug.storageInstructions,
               pharmacy: {
                 id: pharmacyInfo.id,
                 name: pharmacyInfo.name,

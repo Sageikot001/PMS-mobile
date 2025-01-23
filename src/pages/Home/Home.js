@@ -17,20 +17,20 @@ const CATEGORIES = [
   {
     id: '1',
     title: 'Hypertension',
-    icon: 'heart',
-    color: '#E8F1FF',
+    icon: '🫀',
+    backgroundColor: '#E8F1FF',
   },
   {
     id: '2',
     title: 'Sexual Health',
-    icon: 'heart',
-    color: '#FFE8F1',
+    icon: '❤️',
+    backgroundColor: '#FFE8F1',
   },
   {
     id: '3',
     title: 'Pregnancy & conception',
-    icon: 'woman',
-    color: '#E8FFF1',
+    icon: '🤰',
+    backgroundColor: '#E8FFF1',
   },
 ];
 
@@ -231,7 +231,12 @@ const Home = ({ navigation }) => {
               {CATEGORIES.map((category) => (
                 <CategoryCard
                   key={category.id}
-                  {...category}
+                  title={category.title}
+                  icon={category.icon}
+                  backgroundColor={category.backgroundColor}
+                  onPress={() => navigation.navigate('CategoryDetails', { category })}
+                  style={styles.homeCategoryCard}
+                  width={120}
                 />
               ))}
             </ScrollView>
@@ -359,6 +364,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   categoriesScroll: {
+    // paddingVertical: 8,
     flexDirection: 'row',
   },
   servicesGrid: {
@@ -381,6 +387,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(255,255,255,0.98)',
     zIndex: 1000,
+  },
+  homeCategoryCard: {
+    marginRight: 12,
+    width: 120,
+    aspectRatio: 1,
   },
 });
 

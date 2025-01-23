@@ -1,6 +1,13 @@
 import { StyleSheet, View, Text, TouchableOpacity, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+
 
 const ConsultationCard = () => {
+
+  const navigation = useNavigation();
+  // const { metricId } = route.params;
+  // , { metricId }
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -9,7 +16,9 @@ const ConsultationCard = () => {
           <Text style={styles.description}>
             Get connected to the right professional for your health
           </Text>
-          <TouchableOpacity style={styles.button}>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={() => navigation.navigate('ConsultationHome')}>
             <Text style={styles.buttonText}>Schedule now</Text>
           </TouchableOpacity>
         </View>

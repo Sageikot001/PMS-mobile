@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import HealthCard from './components/HealthCard';
 
@@ -24,7 +24,11 @@ const MyHealth = () => {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>My Health</Text>
       
-      <View style={styles.metricsGrid}>
+      <ScrollView 
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.metricsContainer}
+      >
         {healthMetrics.map((metric) => (
           <HealthCard
             key={metric.id}
@@ -32,24 +36,65 @@ const MyHealth = () => {
             onPress={() => handleMetricPress(metric.id)}
           />
         ))}
-      </View>
+      </ScrollView>
 
-      {/* Additional sections from your design */}
-      <TouchableOpacity style={styles.managementCard}>
+      <TouchableOpacity 
+        style={styles.managementCard}
+        onPress={() => navigation.navigate('MedicationManagement')}
+      >
         <Text style={styles.cardTitle}>Medication Management</Text>
         <Text style={styles.cardSubtitle}>
           Manage your medication schedule and never miss a dose with our reminders
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.managementCard}>
+      <TouchableOpacity 
+        style={styles.managementCard}
+        onPress={() => navigation.navigate('ConditionManagement')}
+      >
         <Text style={styles.cardTitle}>Condition Management</Text>
         <Text style={styles.cardSubtitle}>
           Manage your health conditions with our condition management support
         </Text>
       </TouchableOpacity>
 
-      {/* Add other sections as needed */}
+      <TouchableOpacity 
+        style={styles.managementCard}
+        onPress={() => navigation.navigate('WellnessCheck')}
+      >
+        <View style={styles.cardContent}>
+          <View>
+            <Text style={styles.cardTitle}>Wellness Calculator</Text>
+            <Text style={styles.cardSubtitle}>
+              Calculate your way to a healthier you
+            </Text>
+          </View>
+          <View style={styles.iconContainer}>
+            <Text style={styles.cardIcon}>📊</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.consultationCard}>
+        <View style={styles.consultationContent}>
+          <View style={styles.consultationTextContainer}>
+            <Text style={styles.consultationTitle}>Book a Consultation</Text>
+            <Text style={styles.consultationSubtitle}>
+              Get connected to the right professional for your health
+            </Text>
+            <TouchableOpacity style={styles.scheduleButton}>
+              <Text style={styles.scheduleButtonText}>Schedule now</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.consultationImageContainer}>
+            {/* <Image 
+              source={require('../../../assets/doctor-illustration.png')}
+              style={styles.consultationImage}
+              resizeMode="contain"
+            /> */}
+          </View>
+        </View>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -65,11 +110,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  metricsContainer: {
+    paddingRight: 16,
     marginBottom: 20,
+    gap: 12,
   },
   managementCard: {
     backgroundColor: 'white',
@@ -82,6 +126,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -90,6 +139,56 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 14,
     color: '#666',
+  },
+  iconContainer: {
+    justifyContent: 'center',
+  },
+  cardIcon: {
+    fontSize: 24,
+  },
+  consultationCard: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  consultationContent: {
+    flexDirection: 'row',
+    padding: 16,
+  },
+  consultationTextContainer: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  consultationTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  consultationSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+  },
+  scheduleButton: {
+    backgroundColor: '#6200ee',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  scheduleButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  consultationImageContainer: {
+    width: 100,
+    justifyContent: 'center',
+  },
+  consultationImage: {
+    width: '100%',
+    height: 100,
   },
 });
 

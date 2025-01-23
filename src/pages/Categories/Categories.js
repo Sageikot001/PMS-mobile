@@ -1,49 +1,81 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import CategoryCard from '../../components/cards/CategoryCard';
 
 const CATEGORIES = [
   {
     id: '1',
     title: 'Diabetes Medications',
     backgroundColor: '#FFF9E6',
-    // Add image reference once you have the assets
+    icon: '💊',
   },
   {
     id: '2',
     title: 'Hypertension',
     backgroundColor: '#E8F1FF',
+    icon: '🫀',
   },
   {
     id: '3',
     title: 'Sexual Health',
     backgroundColor: '#FFE8F1',
+    icon: '❤️',
   },
   {
     id: '4',
-    title: 'Pregnancy & conception',
+    title: 'Pregnancy & Conception',
     backgroundColor: '#E8FFF1',
+    icon: '🤰',
   },
   {
     id: '5',
-    title: 'Pain & Fever Management',
+    title: 'Pain & Fever',
     backgroundColor: '#FFE8F1',
+    icon: '🤒',
   },
   {
     id: '6',
-    title: 'Eye, Ear & Nose Care',
+    title: 'Eye, Ear & Nose',
     backgroundColor: '#E8F1FF',
+    icon: '👁️',
   },
   {
     id: '7',
     title: 'Skincare',
     backgroundColor: '#FFF9E6',
+    icon: '✨',
   },
   {
     id: '8',
     title: 'First Aid',
     backgroundColor: '#FFE8F1',
+    icon: '🏥',
   },
-  // Add all other categories from the images...
+  {
+    id: '9',
+    title: 'Weight Management',
+    backgroundColor: '#E8F1FF',
+    icon: '⚖️',
+  },
+  {
+    id: '10',
+    title: 'Supplements',
+    backgroundColor: '#FFF9E6',
+    icon: '🌿',
+  },
+  {
+    id: '11',
+    title: 'Fitness',
+    backgroundColor: '#E8FFF1',
+    icon: '🏃',
+  },
+  {
+    id: '12',
+    title: 'Mental Health',
+    backgroundColor: '#FFE8F1',
+    icon: '🧠',
+  }
 ];
 
 const Categories = ({ navigation }) => {
@@ -64,16 +96,14 @@ const Categories = ({ navigation }) => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.grid}>
           {CATEGORIES.map((category) => (
-            <TouchableOpacity
+            <CategoryCard
               key={category.id}
-              style={[styles.categoryCard, { backgroundColor: category.backgroundColor }]}
-              onPress={() => {
-                // Handle category selection
-              }}
-            >
-              {/* Add your image component here once you have the assets */}
-              <Text style={styles.categoryTitle}>{category.title}</Text>
-            </TouchableOpacity>
+              title={category.title}
+              icon={category.icon}
+              backgroundColor={category.backgroundColor}
+              onPress={() => navigation.navigate('CategoryDetails', { category })}
+              style={styles.categoryCardCustom}
+            />
           ))}
         </View>
       </ScrollView>
@@ -90,7 +120,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    paddingTop: 48, // Adjust for status bar
+    paddingTop: 48,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -109,21 +139,13 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 8,
-  },
-  categoryCard: {
-    width: '47%', // Slightly less than half to account for gap
-    aspectRatio: 1,
-    margin: '1.5%',
-    borderRadius: 12,
     padding: 16,
-    justifyContent: 'space-between',
+    gap: 16,
   },
-  categoryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
+  categoryCardCustom: {
+    width: '47%',
+    marginBottom: 0,
+  }
 });
 
 export default Categories; 
