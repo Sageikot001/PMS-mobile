@@ -30,6 +30,8 @@ import OrderDrugs from './src/pages/Pharmacy/OrderDrugs';
 import ConsultationHome from './src/pages/Consultations/ConsultationHome';
 import HealthcareProfessionals from './src/pages/Consultations/HealthcareProfessionals';
 import ProfessionalProfile from './src/pages/Consultations/ProfessionalProfile';
+import CalorieCalculator from './src/pages/MyHealth/WellnessCheck/CalorieCalculator';
+import OvulationCalculator from './src/pages/MyHealth/WellnessCheck/OvulationCalculator';
 
 const Stack = createNativeStackNavigator();
 
@@ -71,6 +73,7 @@ export default function App() {
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
+            animation: 'slide_from_right',
           }}
         >
           <Stack.Screen name="MainLayout" component={MainLayout} />
@@ -92,6 +95,8 @@ export default function App() {
           <Stack.Screen name="ConsultationHome" component={ConsultationHome} />
           <Stack.Screen name="HealthcareProfessionals" component={HealthcareProfessionals} />
           <Stack.Screen name="ProfessionalProfile" component={ProfessionalProfile} />
+          <Stack.Screen name="CalorieCalculator" component={CalorieCalculator} />
+          <Stack.Screen name="OvulationCalculator" component={OvulationCalculator} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
