@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CategoryCard from '../../components/cards/CategoryCard';
+import SearchInput from '../../components/SearchInput';
 
-const CATEGORIES = [
+export const CATEGORIES = [
   {
     id: '1',
     title: 'Diabetes Medications',
@@ -79,6 +80,12 @@ const CATEGORIES = [
 ];
 
 const Categories = ({ navigation }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -91,6 +98,13 @@ const Categories = ({ navigation }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Categories</Text>
       </View>
+
+      {/* Search Input */}
+      <SearchInput
+        value={searchQuery}
+        onChangeText={handleSearch}
+        placeholder="Search for categories..."
+      />
 
       {/* Categories Grid */}
       <ScrollView style={styles.scrollView}>

@@ -13,14 +13,16 @@ const OvulationCalendar = ({ cycleData, onDateChange }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
 
-  const onDateSelect = (event, selectedDate) => {
+  const handleDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || tempDate;
-    setShowDatePicker(Platform.OS === 'ios');
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
     setTempDate(currentDate);
     onDateChange && onDateChange(currentDate);
   };
 
-  const showDatepicker = () => {
+  const showPicker = () => {
     setShowDatePicker(true);
   };
 
@@ -53,46 +55,6 @@ const OvulationCalendar = ({ cycleData, onDateChange }) => {
     };
   };
 
-  const renderDatePicker = () => {
-    if (Platform.OS === 'ios') {
-      return (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showDatePicker}
-          onRequestClose={() => setShowDatePicker(false)}
-        >
-          <View style={styles.modalView}>
-            <View style={styles.modalContent}>
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="spinner"
-                onChange={onDateSelect}
-                style={styles.datePicker}
-              />
-              <TouchableOpacity
-                style={styles.doneButton}
-                onPress={() => setShowDatePicker(false)}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      );
-    }
-
-    return showDatePicker && (
-      <DateTimePicker
-        value={tempDate}
-        mode="date"
-        display="default"
-        onChange={onDateSelect}
-      />
-    );
-  };
-
   const dates = calculateDates();
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
@@ -106,17 +68,20 @@ const OvulationCalendar = ({ cycleData, onDateChange }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Your Fertility Calendar</Text>
+      </View>
+      
+      {Platform.OS === 'android' && (
         <TouchableOpacity
           style={styles.datePickerButton}
-          onPress={showDatepicker}
+          onPress={showPicker}
         >
           <Text style={styles.datePickerButtonText}>
             Select Period Date
           </Text>
         </TouchableOpacity>
-      </View>
+      )}
 
-      <View style={styles.datesContainer}>
+      <View style={[styles.datesContainer, Platform.OS === 'android' && styles.datesContainerAndroid]}>
         <DateItem
           label="Last Period Started"
           date={formatDate(cycleData.lastPeriodDate)}
@@ -139,7 +104,15 @@ const OvulationCalendar = ({ cycleData, onDateChange }) => {
         />
       </View>
 
-      {renderDatePicker()}
+      {(showDatePicker || Platform.OS === 'ios') && (
+        <DateTimePicker
+          value={tempDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+        />
+      )}
     </View>
   );
 };
@@ -161,10 +134,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   title: {
     fontSize: 24,
@@ -173,8 +143,10 @@ const styles = StyleSheet.create({
   },
   datePickerButton: {
     backgroundColor: '#6200ee',
-    padding: 8,
+    padding: 12,
     borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
   },
   datePickerButtonText: {
     color: '#fff',
@@ -190,6 +162,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  datesContainerAndroid: {
+    marginTop: 8,
   },
   dateItem: {
     flexDirection: 'row',
@@ -215,28 +190,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  modalView: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 16,
-  },
-  datePicker: {
-    height: 200,
-  },
-  doneButton: {
-    alignSelf: 'flex-end',
-    padding: 16,
-  },
-  doneButtonText: {
-    color: '#6200ee',
-    fontSize: 16,
-    fontWeight: '600',
+  iosDatePicker: {
+    width: '100%',
+    backgroundColor: 'white',
   },
 });
 

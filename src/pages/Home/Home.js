@@ -12,6 +12,7 @@ import LocationModal from '../../components/modals/LocationModal';
 import { pharmacyData } from '../../data/pharmacyData';
 import { FlashList } from '@shopify/flash-list';
 import { searchPharmaciesAndDrugs } from '../../data/pharmacyData';
+import SearchInput from '../../components/SearchInput';
 
 const CATEGORIES = [
   {
@@ -64,11 +65,13 @@ const Home = ({ navigation }) => {
       const mainLocation = pharmacy.locations[0];
       return {
         ...pharmacy,
+        selectedLocation: mainLocation,
         address: mainLocation.address,
         distance: mainLocation.distance,
         rating: mainLocation.rating,
         openTime: mainLocation.openTime,
-        closeTime: mainLocation.closeTime
+        closeTime: mainLocation.closeTime,
+        locations: pharmacy.locations
       };
     }
     return pharmacy;
@@ -99,53 +102,37 @@ const Home = ({ navigation }) => {
   };
 
   const handlePharmacyPress = (pharmacy) => {
-    if (pharmacy.isChain && !pharmacy.selectedLocation) {
-      setSelectedPharmacy(pharmacy);
+    const fullPharmacyData = pharmacyData.pharmacies.find(p => p.id === pharmacy.id);
+    
+    if (!fullPharmacyData) {
+      console.warn('Pharmacy not found:', pharmacy.id);
+      return;
+    }
+
+    if (pharmacy.isChain) {
+      setSelectedPharmacy(fullPharmacyData);
       setLocationModalVisible(true);
     } else {
-      const fullPharmacyData = pharmacyData.pharmacies.find(p => p.id === pharmacy.id);
       navigation.navigate('PharmacyDetail', {
-        pharmacy: pharmacy.isChain 
-          ? { ...fullPharmacyData, location: pharmacy.selectedLocation } 
-          : fullPharmacyData,
-        initialView: 'inventory'
+        pharmacy: fullPharmacyData
       });
     }
     setShowResults(false);
   };
 
   const handleDrugPress = (drug) => {
-    const fullPharmacyData = pharmacyData.pharmacies.find(p => p.id === drug.pharmacy.id);
-    let category;
-    let categoryDrugs;
+    navigation.navigate('DrugProfile', { drug });
+  };
 
-    if (fullPharmacyData.isChain) {
-      const location = fullPharmacyData.locations.find(loc => loc.id === drug.pharmacy.location.id);
-      Object.entries(location.inventory.categories).forEach(([cat, drugs]) => {
-        if (drugs.some(d => d.id === drug.id)) {
-          category = cat;
-          categoryDrugs = drugs;
-        }
-      });
-    } else {
-      Object.entries(fullPharmacyData.inventory.categories).forEach(([cat, drugs]) => {
-        if (drugs.some(d => d.id === drug.id)) {
-          category = cat;
-          categoryDrugs = drugs;
-        }
-      });
-    }
-
+  const handleLocationSelect = (location) => {
+    setLocationModalVisible(false);
     navigation.navigate('PharmacyDetail', {
-      pharmacy: drug.pharmacy.isChain 
-        ? { ...fullPharmacyData, location: drug.pharmacy.location }
-        : fullPharmacyData,
-      selectedDrug: drug,
-      initialView: 'inventory',
-      category,
-      categoryDrugs
+      pharmacy: {
+        ...selectedPharmacy,
+        location,
+        locations: selectedPharmacy.locations
+      }
     });
-    setShowResults(false);
   };
 
   const renderSections = () => (
@@ -167,28 +154,17 @@ const Home = ({ navigation }) => {
       </View>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#666" />
-        <TextInput 
-          style={styles.searchInput}
-          placeholder="Search for medicines..."
+        <SearchInput
           value={searchQuery}
           onChangeText={handleSearch}
+          placeholder="Search for medicines..."
         />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity 
-            onPress={() => {
-              setSearchQuery('');
-              setShowResults(false);
-            }}
-          >
-            <Ionicons name="close-circle" size={20} color="#666" />
-          </TouchableOpacity>
-        )}
       </View>
 
       {showResults && (
         <SearchResults 
           results={searchResults}
+          onPharmacyPress={handlePharmacyPress}
           onDrugPress={handleDrugPress}
         />
       )}
@@ -279,13 +255,7 @@ const Home = ({ navigation }) => {
         visible={locationModalVisible}
         pharmacy={selectedPharmacy}
         onClose={() => setLocationModalVisible(false)}
-        onSelectLocation={(location) => {
-          navigation.navigate('PharmacyDetail', { 
-            pharmacy: selectedPharmacy,
-            location 
-          });
-          setLocationModalVisible(false);
-        }}
+        onSelect={handleLocationSelect}
       />
     </View>
   );

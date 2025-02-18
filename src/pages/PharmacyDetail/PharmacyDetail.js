@@ -2,97 +2,53 @@ import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// You'll need to create this data file
-import { pharmacyInventory } from '../../data/pharmacyInventory';
-
 const PharmacyDetail = ({ route, navigation }) => {
-  const { pharmacy, selectedDrug, initialView, category: initialCategory, categoryDrugs } = route.params;
+  const { pharmacy, selectedDrug, initialView } = route.params;
   const [viewMode, setViewMode] = useState(initialView || 'inventory');
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory || '');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Get inventory based on pharmacy type (chain or local)
   const getInventory = () => {
-    // Add null checks and default values
     if (!pharmacy) return {};
     
-    if (pharmacy.isChain) {
-      return pharmacy.location?.inventory?.categories || {};
+    if (pharmacy.isChain && pharmacy.location) {
+      return pharmacy.location.inventory.categories;
     }
-    return pharmacy.inventory?.categories || {};
+    return pharmacy.inventory.categories;
   };
 
+  // Filter inventory based on search or category selection
   const filteredInventory = () => {
     const inventory = getInventory();
     
-    if (viewMode === 'inventory') {
-      if (searchQuery) {
-        const searchTerm = searchQuery.toLowerCase();
-        return Object.entries(inventory).flatMap(([category, drugs]) =>
-          (drugs || []).filter(drug =>
+    if (viewMode === 'inventory' && searchQuery) {
+      const searchTerm = searchQuery.toLowerCase();
+      const results = [];
+      
+      Object.entries(inventory).forEach(([category, drugs]) => {
+        drugs.forEach(drug => {
+          if (
             drug.name.toLowerCase().includes(searchTerm) ||
-            drug.brand?.toLowerCase().includes(searchTerm) ||
-            drug.description?.toLowerCase().includes(searchTerm)
-          )
-        );
-      }
-      return Object.values(inventory).flat().filter(Boolean);
-    } else {
-      if (selectedCategory) {
-        const categoryDrugs = inventory[selectedCategory] || [];
-        if (selectedDrug) {
-          return [
-            selectedDrug,
-            ...categoryDrugs.filter(drug => drug.id !== selectedDrug.id)
-          ];
-        }
-        return categoryDrugs;
-      }
-      return [];
+            drug.brand.toLowerCase().includes(searchTerm) ||
+            drug.description.toLowerCase().includes(searchTerm)
+          ) {
+            results.push({ ...drug, category });
+          }
+        });
+      });
+      
+      return results;
     }
-  };
-
-  const renderInventoryView = () => {
-    if (selectedDrug) {
-      // Get the category drugs from the pharmacy's inventory
-      const pharmacyInventory = pharmacy.isChain 
-        ? pharmacy.location.inventory.categories[category]
-        : pharmacy.inventory.categories[category];
-
-      // Put selected drug first, then the rest of the category
-      const sortedDrugs = [
-        selectedDrug,
-        ...pharmacyInventory.filter(drug => drug.id !== selectedDrug.id)
-      ];
-
-      return (
-        <View>
-          <Text style={styles.categoryTitle}>{category}</Text>
-          <FlatList
-            data={sortedDrugs}
-            renderItem={({ item }) => renderDrugItem(item, item.id === selectedDrug.id)}
-            keyExtractor={item => item.id}
-          />
-        </View>
-      );
-    } else {
-      // Get the correct inventory based on pharmacy type
-      const inventory = pharmacy.isChain 
-        ? pharmacy.location.inventory.categories
-        : pharmacy.inventory.categories;
-
-      return (
-        <FlatList
-          data={Object.entries(inventory)}
-          renderItem={({ item: [category, drugs] }) => (
-            <View>
-              <Text style={styles.categoryTitle}>{category}</Text>
-              {drugs.map(drug => renderDrugItem(drug))}
-            </View>
-          )}
-          keyExtractor={([category]) => category}
-        />
-      );
+    
+    if (viewMode === 'category' && selectedCategory) {
+      return inventory[selectedCategory]?.map(drug => ({ ...drug, category: selectedCategory })) || [];
     }
+    
+    // Show all products if no search or category filter
+    return Object.entries(inventory).flatMap(([category, drugs]) =>
+      drugs.map(drug => ({ ...drug, category }))
+    );
   };
 
   const renderHeader = () => (
@@ -105,12 +61,28 @@ const PharmacyDetail = ({ route, navigation }) => {
       </TouchableOpacity>
       <View style={styles.pharmacyInfo}>
         <Text style={styles.pharmacyName}>
-          {pharmacy.location ? pharmacy.location.name : pharmacy.name}
+          {pharmacy.isChain && pharmacy.location 
+            ? pharmacy.location.name 
+            : pharmacy.name}
         </Text>
         <Text style={styles.pharmacyAddress}>
-          {pharmacy.location ? pharmacy.location.address : pharmacy.address}
+          {pharmacy.isChain && pharmacy.location 
+            ? pharmacy.location.address 
+            : pharmacy.address}
         </Text>
       </View>
+      <TouchableOpacity 
+        style={styles.profileButton}
+        onPress={() => navigation.navigate('PharmacyProfile', { 
+          pharmacy: {
+            ...pharmacy,
+            // Ensure we pass the full locations array for chain pharmacies
+            ...(pharmacy.isChain && { locations: pharmacy.locations })
+          }
+        })}
+      >
+        <Ionicons name="information-circle-outline" size={24} color="#7E3AF2" />
+      </TouchableOpacity>
     </View>
   );
 
@@ -157,20 +129,20 @@ const PharmacyDetail = ({ route, navigation }) => {
           showsHorizontalScrollIndicator={false}
           style={styles.categoriesScroll}
         >
-          {pharmacyInventory.categories.map((cat) => (
+          {Object.keys(getInventory()).map((category) => (
             <TouchableOpacity
-              key={cat}
+              key={category}
               style={[
                 styles.categoryChip,
-                selectedCategory === cat && styles.selectedCategoryChip
+                selectedCategory === category && styles.selectedCategoryChip
               ]}
-              onPress={() => setSelectedCategory(cat)}
+              onPress={() => setSelectedCategory(category)}
             >
               <Text style={[
                 styles.categoryChipText,
-                selectedCategory === cat && styles.selectedCategoryChipText
+                selectedCategory === category && styles.selectedCategoryChipText
               ]}>
-                {cat}
+                {category}
               </Text>
             </TouchableOpacity>
           ))}
@@ -179,16 +151,45 @@ const PharmacyDetail = ({ route, navigation }) => {
     </View>
   );
 
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity style={styles.productCard}>
-      <View style={styles.productImagePlaceholder} />
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productDescription}>{item.description}</Text>
-        <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderProductItem = ({ item }) => {
+    const drugData = {
+      ...item,
+      pharmacy: {
+        id: pharmacy.id,
+        name: pharmacy.name,
+        isChain: pharmacy.isChain,
+        location: pharmacy.isChain 
+          ? {
+              id: pharmacy.location.id,
+              name: pharmacy.location.name,
+              address: pharmacy.location.address
+            }
+          : {
+              id: pharmacy.id,
+              name: pharmacy.name,
+              address: pharmacy.address
+            }
+      }
+    };
+
+    return (
+      <TouchableOpacity 
+        style={styles.productCard}
+        onPress={() => navigation.navigate('DrugProfile', { drug: drugData })}
+      >
+        <View style={styles.productImagePlaceholder}>
+          <Ionicons name="medical" size={24} color="#666" />
+        </View>
+        <View style={styles.productInfo}>
+          <Text style={styles.productName}>{item.name}</Text>
+          <Text style={styles.productBrand}>{item.brand}</Text>
+          <Text style={styles.productCategory}>{item.category}</Text>
+          <Text style={styles.productDescription}>{item.description}</Text>
+          <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -325,6 +326,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  productBrand: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  productCategory: {
+    fontSize: 12,
+    color: '#7E3AF2',
+    marginTop: 4,
+  },
   productDescription: {
     color: '#666',
     fontSize: 14,
@@ -334,6 +345,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#7E3AF2',
+  },
+  profileButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
   },
 });
 

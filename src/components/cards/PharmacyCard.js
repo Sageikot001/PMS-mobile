@@ -2,8 +2,13 @@ import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const PharmacyCard = ({ pharmacy, onPress }) => {
+  const handlePress = () => {
+    // Always pass the full pharmacy data, let Home component handle the modal logic
+    onPress(pharmacy);
+  };
+
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity style={styles.container} onPress={handlePress}>
       <Image 
         source={pharmacy.logo}
         style={styles.logo}
@@ -11,6 +16,13 @@ const PharmacyCard = ({ pharmacy, onPress }) => {
       />
       <View style={styles.info}>
         <Text style={styles.name}>{pharmacy.name}</Text>
+        {pharmacy.isChain ? (
+          <Text style={styles.branchCount}>
+            {pharmacy.locations.length} branches available
+          </Text>
+        ) : (
+          <Text style={styles.address}>{pharmacy.address}</Text>
+        )}
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={16} color="#FFD700" />
           <Text style={styles.rating}>{pharmacy.rating}</Text>
@@ -69,6 +81,16 @@ const styles = StyleSheet.create({
   chainText: {
     color: '#7E3AF2',
     fontSize: 12,
+  },
+  address: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  branchCount: {
+    fontSize: 12,
+    color: '#7E3AF2',
+    marginBottom: 4,
   },
 });
 

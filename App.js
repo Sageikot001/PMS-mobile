@@ -21,7 +21,7 @@ import DosageSchedule from './src/pages/MyHealth/MedicationManagement/DosageSche
 import ConditionManagement from './src/pages/MyHealth/ConditionManagement/ConditionManagement';
 import AddCondition from './src/pages/MyHealth/ConditionManagement/AddCondition';
 import ConditionDrugs from './src/pages/MyHealth/ConditionManagement/ConditionDrugs';
-import DrugProfile from './src/pages/MyHealth/ConditionManagement/DrugProfile';
+import DrugProfile from './src/pages/DrugProfile/DrugProfile';
 import WellnessCheck from './src/pages/MyHealth/WellnessCheck/WellnessCheck';
 import BMICalculator from './src/pages/MyHealth/WellnessCheck/BMICalculator';
 import PharmacistConsult from './src/pages/Consultations/PharmacistConsult';
@@ -32,6 +32,11 @@ import HealthcareProfessionals from './src/pages/Consultations/HealthcareProfess
 import ProfessionalProfile from './src/pages/Consultations/ProfessionalProfile';
 import CalorieCalculator from './src/pages/MyHealth/WellnessCheck/CalorieCalculator';
 import OvulationCalculator from './src/pages/MyHealth/WellnessCheck/OvulationCalculator';
+import BookAppointment from './src/pages/Consultations/BookAppointment';
+import AppointmentConfirmation from './src/pages/Consultations/AppointmentConfirmation';
+import PharmacyProfile from './src/pages/PharmacyProfile/PharmacyProfile';
+import CategoryDetails from './src/pages/Categories/CategoryDetails';
+import OrderDetails from './src/pages/Orders/OrderDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,6 +83,7 @@ export default function App() {
         >
           <Stack.Screen name="MainLayout" component={MainLayout} />
           <Stack.Screen name="Categories" component={Categories} />
+          <Stack.Screen name="CategoryDetails" component={CategoryDetails} />
           <Stack.Screen name="PharmacyDetail" component={PharmacyDetail} />
           <Stack.Screen name="HealthMetricDetail" component={HealthMetricDetail} />
           <Stack.Screen name="MedicationManagement" component={MedicationManagement} />
@@ -97,6 +103,10 @@ export default function App() {
           <Stack.Screen name="ProfessionalProfile" component={ProfessionalProfile} />
           <Stack.Screen name="CalorieCalculator" component={CalorieCalculator} />
           <Stack.Screen name="OvulationCalculator" component={OvulationCalculator} />
+          <Stack.Screen name="BookAppointment" component={BookAppointment} />
+          <Stack.Screen name="AppointmentConfirmation" component={AppointmentConfirmation} />
+          <Stack.Screen name="PharmacyProfile" component={PharmacyProfile} />
+          <Stack.Screen name="OrderDetails" component={OrderDetails} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

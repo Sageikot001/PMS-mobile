@@ -14,7 +14,7 @@ const ConsultationActions = () => {
     <View style={styles.actionsContainer}>
       <TouchableOpacity 
         style={styles.actionButton}
-        onPress={() => navigation.navigate('PharmacistConsult')}
+        onPress={() => navigation.navigate('HealthcareProfessionals', { type: 'pharmacist' })}
       >
         <Text style={styles.actionIcon}>💊</Text>
         <Text style={styles.actionText}>Speak to a pharmacist</Text>
@@ -22,7 +22,7 @@ const ConsultationActions = () => {
 
       <TouchableOpacity 
         style={styles.actionButton}
-        onPress={() => navigation.navigate('DoctorConsult')}
+        onPress={() => navigation.navigate('HealthcareProfessionals', { type: 'doctor' })}
       >
         <Text style={styles.actionIcon}>👨‍⚕️</Text>
         <Text style={styles.actionText}>Speak to a doctor</Text>
