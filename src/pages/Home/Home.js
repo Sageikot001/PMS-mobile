@@ -138,13 +138,15 @@ const Home = ({ navigation }) => {
   const renderSections = () => (
     <>
       <View style={styles.header}>
-        <View style={styles.location}>
+        <TouchableOpacity 
+          style={styles.location}
+          onPress={() => navigation.navigate('AddressManagement')}>
           <Ionicons name="location" size={24} color="#444" />
           <Text style={styles.locationText}>10, Ugbeje Aki Stree...</Text>
           <Ionicons name="chevron-down" size={24} color="#444" />
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerIcons}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Cart')}>
             <Ionicons name="cart-outline" size={24} color="#444" />
           </TouchableOpacity>
           <TouchableOpacity>

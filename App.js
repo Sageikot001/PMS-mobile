@@ -37,6 +37,16 @@ import AppointmentConfirmation from './src/pages/Consultations/AppointmentConfir
 import PharmacyProfile from './src/pages/PharmacyProfile/PharmacyProfile';
 import CategoryDetails from './src/pages/Categories/CategoryDetails';
 import OrderDetails from './src/pages/Orders/OrderDetails';
+import Cart from './src/pages/Cart/Cart';
+import TopUp from './src/pages/Wallet/TopUp';
+import AddressManagement from './src/pages/Address/AddressManagement';
+import PersonalDetails from './src/pages/Account/PersonalDetails';
+import FamilyAndFriends from './src/pages/Account/FamilyAndFriends';
+import SecuritySettings from './src/pages/Account/SecuritySettings';
+import Support from './src/pages/Account/Support';
+import About from './src/pages/Account/About';
+import Terms from './src/pages/Account/Terms';
+import PaymentMethod from './src/pages/Wallet/PaymentMethod';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,13 +58,13 @@ const MainLayout = ({ navigation }) => {
       case 'home':
         return <Home navigation={navigation} />;
       case 'orders':
-        return <Orders />;
+        return <Orders navigation={navigation} />;
       case 'myhealth':
-        return <MyHealth />;
+        return <MyHealth navigation={navigation} />;
       case 'wallet':
-        return <Wallet />;
+        return <Wallet navigation={navigation} />;
       case 'account':
-        return <Account />;
+        return <Account navigation={navigation} />;
       default:
         return <Home navigation={navigation} />;
     }
@@ -65,7 +75,7 @@ const MainLayout = ({ navigation }) => {
       <View style={styles.content}>
         {renderScreen()}
       </View>
-      <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabPress={setActiveTab} navigation={navigation} />
       <StatusBar style="auto" />
     </SafeAreaView>
   );
@@ -85,6 +95,16 @@ export default function App() {
           <Stack.Screen name="Categories" component={Categories} />
           <Stack.Screen name="CategoryDetails" component={CategoryDetails} />
           <Stack.Screen name="PharmacyDetail" component={PharmacyDetail} />
+          <Stack.Screen name="Cart" component={Cart} />
+          <Stack.Screen name="AddressManagement" component={AddressManagement} />
+          <Stack.Screen name="TopUp" component={TopUp} />
+          <Stack.Screen name="PaymentMethod" component={PaymentMethod} />
+          <Stack.Screen name="PersonalDetails" component={PersonalDetails} />
+          <Stack.Screen name="FamilyAndFriends" component={FamilyAndFriends} />
+          <Stack.Screen name="SecuritySettings" component={SecuritySettings} />
+          <Stack.Screen name="Support" component={Support} />
+          <Stack.Screen name="About" component={About} />
+          <Stack.Screen name="Terms" component={Terms} />
           <Stack.Screen name="HealthMetricDetail" component={HealthMetricDetail} />
           <Stack.Screen name="MedicationManagement" component={MedicationManagement} />
           <Stack.Screen name="AddMedication" component={AddMedication} />

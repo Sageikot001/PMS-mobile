@@ -23,7 +23,7 @@ const PharmacyDetail = ({ route, navigation }) => {
     const inventory = getInventory();
     
     if (viewMode === 'inventory' && searchQuery) {
-      const searchTerm = searchQuery.toLowerCase();
+        const searchTerm = searchQuery.toLowerCase();
       const results = [];
       
       Object.entries(inventory).forEach(([category, drugs]) => {
@@ -180,15 +180,15 @@ const PharmacyDetail = ({ route, navigation }) => {
         <View style={styles.productImagePlaceholder}>
           <Ionicons name="medical" size={24} color="#666" />
         </View>
-        <View style={styles.productInfo}>
-          <Text style={styles.productName}>{item.name}</Text>
+      <View style={styles.productInfo}>
+        <Text style={styles.productName}>{item.name}</Text>
           <Text style={styles.productBrand}>{item.brand}</Text>
           <Text style={styles.productCategory}>{item.category}</Text>
-          <Text style={styles.productDescription}>{item.description}</Text>
-          <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
-        </View>
-      </TouchableOpacity>
-    );
+        <Text style={styles.productDescription}>{item.description}</Text>
+        <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+      </View>
+    </TouchableOpacity>
+  );
   };
 
   return (
