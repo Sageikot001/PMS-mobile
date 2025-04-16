@@ -47,6 +47,8 @@ import Support from './src/pages/Account/Support';
 import About from './src/pages/Account/About';
 import Terms from './src/pages/Account/Terms';
 import PaymentMethod from './src/pages/Wallet/PaymentMethod';
+import PaystackPayment from './src/pages/Wallet/PaystackPayment';
+// import FlutterwavePayment from './src/pages/Wallet/FlutterwavePayment';
 
 const Stack = createNativeStackNavigator();
 
@@ -127,6 +129,8 @@ export default function App() {
           <Stack.Screen name="AppointmentConfirmation" component={AppointmentConfirmation} />
           <Stack.Screen name="PharmacyProfile" component={PharmacyProfile} />
           <Stack.Screen name="OrderDetails" component={OrderDetails} />
+          <Stack.Screen name="PaystackPayment" component={PaystackPayment} options={{ headerShown: false }} />
+          {/* <Stack.Screen name="FlutterwavePayment" component={FlutterwavePayment} options={{ headerShown: false }} /> */}
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

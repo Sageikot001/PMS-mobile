@@ -1,104 +1,143 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { generateReference } from '../../services/PaystackService';
 
-const TopUp = ({ navigation }) => {
-  const [amount, setAmount] = useState('1,000');
+const TopUp = () => {
+  const navigation = useNavigation();
+  const [amount, setAmount] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handlePayment = () => {
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      return;
+    }
+
+    const email = 'user@example.com'; // Replace with actual user email
+    const paystackAmount = parseFloat(amount);
+    const reference = generateReference();
+
+    navigation.navigate('PaystackPayment', {
+      amount: paystackAmount,
+      email,
+      reference
+    });
+  };
+
+  // Predefined amounts for quick selection
+  const quickAmounts = [1000, 2000, 5000, 10000];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>Top Up Wallet</Text>
+        
+        <View style={styles.amountSection}>
+          <Text style={styles.label}>Enter amount (₦)</Text>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder="Enter amount"
+            placeholderTextColor="#666"
+          />
+        </View>
+
+        <View style={styles.quickAmounts}>
+          {quickAmounts.map((quickAmount) => (
+            <TouchableOpacity
+              key={quickAmount}
+              style={styles.quickAmountButton}
+              onPress={() => setAmount(quickAmount.toString())}
+            >
+              <Text style={styles.quickAmountText}>₦{quickAmount.toLocaleString()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity 
+          style={styles.proceedButton}
+          onPress={handlePayment}
+          disabled={isProcessing}
+        >
+          <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Wallet top up</Text>
-        <View style={{ width: 24 }} />
       </View>
-
-      <Text style={styles.subtitle}>
-        Top up your Pharmarun wallet and power up your purchasing potential
-      </Text>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.currency}>₦</Text>
-        <TextInput
-          style={styles.amountInput}
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-        />
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.continueButton, !amount && styles.continueButtonDisabled]}
-        disabled={!amount}
-        onPress={() => navigation.navigate('PaymentMethod')}>
-        <Text style={styles.continueButtonText}>Continue</Text>
-      </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  content: {
+    padding: 20,
   },
-  headerTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333',
   },
-  subtitle: {
+  amountSection: {
+    marginBottom: 20,
+  },
+  label: {
     fontSize: 16,
-    color: '#666',
-    padding: 16,
-    marginBottom: 16,
+    marginBottom: 8,
+    color: '#333',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 16,
-    padding: 16,
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#ddd',
+  },
+  quickAmounts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  quickAmountButton: {
+    backgroundColor: '#fff',
     borderRadius: 8,
+    padding: 12,
+    width: '48%',
+    marginBottom: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  currency: {
-    fontSize: 20,
-    color: '#000',
-    marginRight: 8,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 20,
-    color: '#000',
-  },
-  continueButton: {
-    backgroundColor: '#7E3AF2',
-    margin: 16,
-    padding: 16,
-    borderRadius: 8,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  continueButtonText: {
-    color: '#fff',
+  quickAmountText: {
     fontSize: 16,
+    color: '#333',
+  },
+  proceedButton: {
+    backgroundColor: '#7E3AF2',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  proceedButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
   },
 });
 
