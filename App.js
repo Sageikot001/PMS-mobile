@@ -5,6 +5,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Import Authentication Context
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+
+// Import Auth Stack
+import AuthStack from './src/navigation/AuthStack';
+
 // Import pages
 import Home from './src/pages/Home/Home';
 import Orders from './src/pages/Orders/Orders';
@@ -48,12 +54,18 @@ import About from './src/pages/Account/About';
 import Terms from './src/pages/Account/Terms';
 import PaymentMethod from './src/pages/Wallet/PaymentMethod';
 import PaystackPayment from './src/pages/Wallet/PaystackPayment';
+import AmbulanceService from './src/pages/AmbulanceService';
+import MedicationRefill from './src/pages/MedicationRefill';
+import PharmaBundles from './src/pages/PharmaBundles/PharmaBundles';
+import InstitutionPackages from './src/pages/PharmaBundles/InstitutionPackages';
+import PackageDetails from './src/pages/PharmaBundles/PackageDetails';
 // import FlutterwavePayment from './src/pages/Wallet/FlutterwavePayment';
 
 const Stack = createNativeStackNavigator();
 
 const MainLayout = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('home');
+  const { user } = useAuth();
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -66,7 +78,7 @@ const MainLayout = ({ navigation }) => {
       case 'wallet':
         return <Wallet navigation={navigation} />;
       case 'account':
-        return <Account navigation={navigation} />;
+        return <Account navigation={navigation} user={user} />;
       default:
         return <Home navigation={navigation} />;
     }
@@ -83,10 +95,13 @@ const MainLayout = ({ navigation }) => {
   );
 };
 
-export default function App() {
+// Main navigation component
+const AppNavigator = () => {
+  const { isLoggedIn } = useAuth();
+
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
+    <NavigationContainer>
+      {isLoggedIn ? (
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
@@ -129,10 +144,28 @@ export default function App() {
           <Stack.Screen name="AppointmentConfirmation" component={AppointmentConfirmation} />
           <Stack.Screen name="PharmacyProfile" component={PharmacyProfile} />
           <Stack.Screen name="OrderDetails" component={OrderDetails} />
+          <Stack.Screen name="AmbulanceService" component={AmbulanceService} />
+          <Stack.Screen name="MedicationRefill" component={MedicationRefill} />
+          <Stack.Screen name="PharmaBundles" component={PharmaBundles} />
+          <Stack.Screen name="InstitutionPackages" component={InstitutionPackages} />
+          <Stack.Screen name="PackageDetails" component={PackageDetails} />
           <Stack.Screen name="PaystackPayment" component={PaystackPayment} options={{ headerShown: false }} />
           {/* <Stack.Screen name="FlutterwavePayment" component={FlutterwavePayment} options={{ headerShown: false }} /> */}
         </Stack.Navigator>
-      </NavigationContainer>
+      ) : (
+        <AuthStack />
+      )}
+    </NavigationContainer>
+  );
+};
+
+// Main App component with authentication provider
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

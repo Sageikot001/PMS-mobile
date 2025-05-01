@@ -1,8 +1,8 @@
 import { StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const ServiceCard = ({ title, icon }) => (
-  <TouchableOpacity style={styles.serviceCard}>
+const ServiceCard = ({ title, icon, style, onPress }) => (
+  <TouchableOpacity style={[styles.serviceCard, style]} onPress={onPress}>
     <Ionicons name={icon} size={32} color="#444" />
     <Text style={styles.serviceTitle}>{title}</Text>
   </TouchableOpacity>
@@ -10,7 +10,7 @@ const ServiceCard = ({ title, icon }) => (
 
 const styles = StyleSheet.create({
   serviceCard: {
-    width: '30%',
+    width: 120,
     aspectRatio: 1,
     backgroundColor: '#fff',
     borderRadius: 12,

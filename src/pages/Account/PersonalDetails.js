@@ -1,70 +1,189 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import ProfileService from '../../services/ProfileService';
 
-const PersonalDetails = () => {
-  const [firstName, setFirstName] = useState('Nsikak');
-  const [lastName, setLastName] = useState('Ikot');
-  const [email, setEmail] = useState('ikotnsikak@gmail.com');
-  const [phone, setPhone] = useState('07078391223');
-  const navigation = useNavigation();
+const PersonalDetails = ({ navigation }) => {
+  const { user, updateProfile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Form state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  
+  // Validation state
+  const [nameError, setNameError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+    }
+  }, [user]);
+
+  // Validate name
+  const validateName = (name) => {
+    if (!name) {
+      setNameError('Name is required');
+      return false;
+    } else if (name.length < 2) {
+      setNameError('Name must be at least 2 characters');
+      return false;
+    }
+    setNameError('');
+    return true;
+  };
+
+  // Validate phone
+  const validatePhone = (phone) => {
+    if (!phone) {
+      setPhoneError('Phone number is required');
+      return false;
+    } else if (phone.length < 10) {
+      setPhoneError('Enter a valid phone number');
+      return false;
+    }
+    setPhoneError('');
+    return true;
+  };
+
+  // Handle save profile
+  const handleSaveProfile = async () => {
+    // Validate fields
+    const isNameValid = validateName(name);
+    const isPhoneValid = validatePhone(phone);
+
+    if (!isNameValid || !isPhoneValid) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateProfile({ name, phone });
+      
+      Alert.alert('Success', 'Profile updated successfully');
+      setIsEditing(false);
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!name) return '??';
+    
+    const nameParts = name.split(' ');
+    if (nameParts.length >= 2) {
+      return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+    } else if (nameParts.length === 1) {
+      return nameParts[0].substring(0, 2).toUpperCase();
+    }
+    return '??';
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Personal details</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Personal Details</Text>
+        <TouchableOpacity 
+          onPress={() => isEditing ? handleSaveProfile() : setIsEditing(true)} 
+          disabled={loading}
+          style={styles.editButton}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#0066CC" />
+          ) : (
+            <Text style={styles.editButtonText}>{isEditing ? 'Save' : 'Edit'}</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.form}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>First name</Text>
-          <TextInput
-            style={styles.input}
-            value={firstName}
-            onChangeText={setFirstName}
-          />
+      <ScrollView style={styles.content}>
+        <View style={styles.profileImageContainer}>
+          {user?.profilePicture ? (
+            <Image source={{ uri: user.profilePicture }} style={styles.profileImage} />
+          ) : (
+            <View style={styles.initialsContainer}>
+              <Text style={styles.initialsText}>{getUserInitials()}</Text>
+            </View>
+          )}
+          {isEditing && (
+            <TouchableOpacity style={styles.changePhotoButton}>
+              <Text style={styles.changePhotoText}>Change Photo</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Last name</Text>
-          <TextInput
-            style={styles.input}
-            value={lastName}
-            onChangeText={setLastName}
-          />
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Full Name</Text>
+          {isEditing ? (
+            <>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter your full name"
+                onBlur={() => validateName(name)}
+              />
+              {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
+            </>
+          ) : (
+            <Text style={styles.value}>{name || 'Not provided'}</Text>
+          )}
         </View>
 
-        <View style={styles.inputGroup}>
+        <View style={styles.formGroup}>
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-          />
+          <Text style={styles.value}>{email || 'Not provided'}</Text>
+          <Text style={styles.note}>Email cannot be changed</Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone number</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Phone</Text>
+          {isEditing ? (
+            <>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Enter your phone number"
+                keyboardType="phone-pad"
+                onBlur={() => validatePhone(phone)}
+              />
+              {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
+            </>
+          ) : (
+            <Text style={styles.value}>{phone || 'Not provided'}</Text>
+          )}
         </View>
 
         <TouchableOpacity 
-          style={styles.saveButton}
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.saveButtonText}>Save changes</Text>
+          style={styles.passwordButton}
+          onPress={() => navigation.navigate('SecuritySettings')}
+        >
+          <Text style={styles.passwordButtonText}>Change Password</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -72,49 +191,108 @@ const PersonalDetails = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9f9f9',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  editButton: {
+    padding: 8,
+  },
+  editButtonText: {
+    color: '#0066CC',
+    fontWeight: '500',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  initialsContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#7E3AF2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initialsText: {
+    color: 'white',
+    fontSize: 36,
     fontWeight: 'bold',
   },
-  form: {
-    padding: 16,
-    gap: 24,
+  changePhotoButton: {
+    marginTop: 12,
   },
-  inputGroup: {
-    gap: 8,
+  changePhotoText: {
+    color: '#0066CC',
+    fontSize: 16,
+  },
+  formGroup: {
+    marginBottom: 24,
   },
   label: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 8,
+  },
+  value: {
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 16,
     fontSize: 16,
+    color: '#333',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0066CC',
   },
-  saveButton: {
-    backgroundColor: '#7E3AF2',
+  note: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  passwordButton: {
+    backgroundColor: '#0066CC',
     padding: 16,
     borderRadius: 8,
-    marginTop: 24,
+    alignItems: 'center',
+    marginTop: 16,
   },
-  saveButtonText: {
+  passwordButtonText: {
     color: '#fff',
+    fontWeight: 'bold',
     fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
   },
 });
 

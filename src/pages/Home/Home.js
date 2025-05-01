@@ -38,17 +38,25 @@ const CATEGORIES = [
 const SERVICES = [
   {
     id: '1',
-    title: 'Medication refill',
-    icon: 'medical',
+    title: 'Ambulance Service',
+    icon: 'bus',
+    route: 'AmbulanceService',
   },
   {
     id: '2',
-    title: 'Pharma bundles',
-    icon: 'cart',
+    title: 'Medication refill',
+    icon: 'medical',
+    route: 'MedicationRefill',
   },
   {
     id: '3',
-    title: 'Chat with Tinai',
+    title: 'Pharma bundles',
+    icon: 'cart',
+    route: 'PharmaBundles',
+  },
+  {
+    id: '4',
+    title: 'Chat with Kai',
     icon: 'chatbubbles',
   },
 ];
@@ -222,15 +230,21 @@ const Home = ({ navigation }) => {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Explore our services</Text>
-            <View style={styles.servicesGrid}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.servicesScroll}
+            >
               {SERVICES.map((service) => (
                 <ServiceCard
                   key={service.id}
                   title={service.title}
                   icon={service.icon}
+                  style={styles.serviceCard}
+                  onPress={() => service.route && navigation.navigate(service.route)}
                 />
               ))}
-            </View>
+            </ScrollView>
           </View>
 
           <View style={styles.section}>
@@ -344,6 +358,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 16,
     marginTop: 12,
+  },
+  servicesScroll: {
+    marginTop: 12,
+  },
+  serviceCard: {
+    marginRight: 12,
+    width: 120,
   },
   bottomPadding: {
     height: 20,

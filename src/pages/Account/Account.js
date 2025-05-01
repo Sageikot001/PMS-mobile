@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 
 const MenuItem = ({ icon, title, onPress, showSwitch, isEnabled, onToggle }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -24,85 +25,134 @@ const MenuItem = ({ icon, title, onPress, showSwitch, isEnabled, onToggle }) => 
 const Account = () => {
   const [pushEnabled, setPushEnabled] = React.useState(true);
   const navigation = useNavigation();
+  const { user, logout, loading } = useAuth();
+
+  // Handle logout with confirmation
+  const handleLogout = () => {
+    Alert.alert(
+      'Confirm Logout',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          onPress: async () => {
+            try {
+              await logout();
+              // No need to navigate - auth context will handle this
+            } catch (error) {
+              console.error('Logout error:', error);
+            }
+          },
+          style: 'destructive'
+        },
+      ]
+    );
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user || !user.name) return '??';
+    
+    const nameParts = user.name.split(' ');
+    if (nameParts.length >= 2) {
+      return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+    } else if (nameParts.length === 1) {
+      return nameParts[0].substring(0, 2).toUpperCase();
+    }
+    return '??';
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.headerTitle}>Account</Text>
+      
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.profile}>
+          {user?.profilePicture ? (
+            <Image 
+              source={{ uri: user.profilePicture }}
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={styles.initialsAvatar}>
+              <Text style={styles.initialsText}>{getUserInitials()}</Text>
+            </View>
+          )}
+          <Text style={styles.name}>{user?.name || 'User'}</Text>
+          <Text style={styles.email}>{user?.email || ''}</Text>
+          <Text style={styles.phone}>{user?.phone || ''}</Text>
+        </View>
 
-      <View style={styles.profile}>
-        {/* <Image 
-          source={require('../../assets/avatar-placeholder.png')}
-          style={styles.avatar}
-        /> */}
-        <Text style={styles.name}>Nsikak Ikot</Text>
-        <Text style={styles.email}>ikotnsikak@gmail.com</Text>
-        <Text style={styles.phone}>07078391223</Text>
-      </View>
+        <View style={styles.section}>
+          <MenuItem
+            icon={<Ionicons name="person-outline" size={24} color="#7E3AF2" />}
+            title="Personal details"
+            onPress={() => navigation.navigate('PersonalDetails')}
+          />
+          <MenuItem
+            icon={<Ionicons name="people-outline" size={24} color="#7E3AF2" />}
+            title="Family and friends"
+            onPress={() => navigation.navigate('FamilyAndFriends')}
+          />
+          <MenuItem
+            icon={<Ionicons name="location-outline" size={24} color="#7E3AF2" />}
+            title="Address management"
+            onPress={() => navigation.navigate('AddressManagement')}
+          />
+          <MenuItem
+            icon={<Ionicons name="gift-outline" size={24} color="#7E3AF2" />}
+            title="Referrals"
+            onPress={() => navigation.navigate('Referrals')}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <MenuItem
-          icon={<Ionicons name="person-outline" size={24} color="#7E3AF2" />}
-          title="Personal details"
-          onPress={() => navigation.navigate('PersonalDetails')}
-        />
-        <MenuItem
-          icon={<Ionicons name="people-outline" size={24} color="#7E3AF2" />}
-          title="Family and friends"
-          onPress={() => navigation.navigate('FamilyAndFriends')}
-        />
-        <MenuItem
-          icon={<Ionicons name="location-outline" size={24} color="#7E3AF2" />}
-          title="Address management"
-          onPress={() => navigation.navigate('AddressManagement')}
-        />
-        <MenuItem
-          icon={<Ionicons name="gift-outline" size={24} color="#7E3AF2" />}
-          title="Referrals"
-          onPress={() => navigation.navigate('Referrals')}
-        />
-      </View>
+        <Text style={styles.sectionTitle}>Settings</Text>
 
-      <Text style={styles.sectionTitle}>Settings</Text>
+        <View style={styles.section}>
+          <MenuItem
+            icon={<Ionicons name="notifications-outline" size={24} color="#0084FF" />}
+            title="Push notifications"
+            showSwitch={true}
+            isEnabled={pushEnabled}
+            onToggle={setPushEnabled}
+          />
+          <MenuItem
+            icon={<Ionicons name="shield-checkmark-outline" size={24} color="#0084FF" />}
+            title="Security settings"
+            onPress={() => navigation.navigate('SecuritySettings')}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <MenuItem
-          icon={<Ionicons name="notifications-outline" size={24} color="#0084FF" />}
-          title="Push notifications"
-          showSwitch={true}
-          isEnabled={pushEnabled}
-          onToggle={setPushEnabled}
-        />
-        <MenuItem
-          icon={<Ionicons name="shield-checkmark-outline" size={24} color="#0084FF" />}
-          title="Security settings"
-          onPress={() => navigation.navigate('SecuritySettings')}
-        />
-      </View>
+        <View style={styles.section}>
+          <MenuItem
+            icon={<Ionicons name="help-circle-outline" size={24} color="#00B383" />}
+            title="Support"
+            onPress={() => navigation.navigate('Support')}
+          />
+          <MenuItem
+            icon={<Ionicons name="information-circle-outline" size={24} color="#00B383" />}
+            title="About Pharmarun"
+            onPress={() => navigation.navigate('About')}
+          />
+          <MenuItem
+            icon={<Ionicons name="document-text-outline" size={24} color="#00B383" />}
+            title="Terms and conditions"
+            onPress={() => navigation.navigate('Terms')}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <MenuItem
-          icon={<Ionicons name="help-circle-outline" size={24} color="#00B383" />}
-          title="Support"
-          onPress={() => navigation.navigate('Support')}
-        />
-        <MenuItem
-          icon={<Ionicons name="information-circle-outline" size={24} color="#00B383" />}
-          title="About Pharmarun"
-          onPress={() => navigation.navigate('About')}
-        />
-        <MenuItem
-          icon={<Ionicons name="document-text-outline" size={24} color="#00B383" />}
-          title="Terms and conditions"
-          onPress={() => navigation.navigate('Terms')}
-        />
-      </View>
-
-      <TouchableOpacity 
-        style={styles.logoutButton}
-        onPress={() => navigation.navigate('Login')}>
-        <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-        <Text style={styles.logoutText}>Log out</Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={loading}>
+          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          <Text style={styles.logoutText}>Log out</Text>
+        </TouchableOpacity>
+        
+        {/* Add some bottom padding for better scrolling experience */}
+        <View style={styles.bottomPadding} />
+      </ScrollView>
     </View>
   );
 };
@@ -126,6 +176,20 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     marginBottom: 16,
+  },
+  initialsAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#7E3AF2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  initialsText: {
+    color: 'white',
+    fontSize: 30,
+    fontWeight: 'bold',
   },
   name: {
     fontSize: 20,
@@ -175,6 +239,9 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     color: '#FF3B30',
+  },
+  bottomPadding: {
+    height: 20,
   },
 });
 
