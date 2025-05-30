@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import logo from '../../../assets/logo.png';
 
 const Register = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -36,7 +38,7 @@ const Register = ({ navigation }) => {
   // Validation functions
   const validateName = (name) => {
     if (!name) {
-      setNameError('Name is required');
+      setNameError('Name is  d');
       return false;
     } else if (name.length < 2) {
       setNameError('Name must be at least 2 characters');
@@ -49,7 +51,7 @@ const Register = ({ navigation }) => {
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      setEmailError('Email is required');
+      setEmailError('Email is  d');
       return false;
     } else if (!emailRegex.test(email)) {
       setEmailError('Invalid email format');
@@ -61,7 +63,7 @@ const Register = ({ navigation }) => {
 
   const validatePassword = (password) => {
     if (!password) {
-      setPasswordError('Password is required');
+      setPasswordError('Password is  d');
       return false;
     } else if (password.length < 6) {
       setPasswordError('Password must be at least 6 characters');
@@ -86,7 +88,7 @@ const Register = ({ navigation }) => {
   const validatePhone = (phone) => {
     // Basic phone validation - you can make this more sophisticated
     if (!phone) {
-      setPhoneError('Phone number is required');
+      setPhoneError('Phone number is  d');
       return false;
     } else if (phone.length < 10) {
       setPhoneError('Enter a valid phone number');
@@ -135,7 +137,7 @@ const Register = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../../assets/logo.png')}
+            source={logo}
             style={styles.logo}
             resizeMode="contain"
           />

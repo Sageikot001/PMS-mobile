@@ -88,7 +88,7 @@ const MyHealth = () => {
           </View>
           <View style={styles.consultationImageContainer}>
             {/* <Image 
-              source={require('../../../assets/doctor-illustration.png')}
+              source={ ('../../../assets/doctor-illustration.png')}
               style={styles.consultationImage}
               resizeMode="contain"
             /> */}

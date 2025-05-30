@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { API_URL, ENDPOINTS } from '../../config/api';
+import logo from '../../../assets/logo.png';
 
 const ForgotPassword = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ const ForgotPassword = ({ navigation }) => {
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      setEmailError('Email is required');
+      setEmailError('Email is  d');
       return false;
     } else if (!emailRegex.test(email)) {
       setEmailError('Invalid email format');
@@ -72,7 +73,7 @@ const ForgotPassword = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../../assets/logo.png')}
+            source={logo}
             style={styles.logo}
             resizeMode="contain"
           />

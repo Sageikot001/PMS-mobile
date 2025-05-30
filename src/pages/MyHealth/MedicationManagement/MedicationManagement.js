@@ -21,7 +21,7 @@ const MedicationManagement = () => {
 
       <View style={styles.emptyStateContainer}>
         {/* <Image 
-          source={require('../../../../assets/medication-icon.png')}
+          source={ ('../../../../assets/medication-icon.png')}
           style={styles.medicationIcon}
           resizeMode="contain"
         /> */}

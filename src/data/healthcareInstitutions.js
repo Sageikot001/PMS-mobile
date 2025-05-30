@@ -1,8 +1,15 @@
+// Import all institution logos
+import medplusLogo from '../../assets/images/institutions/medplus.png';
+import stnicholasLogo from '../../assets/images/institutions/stnicholas.png';
+import healthplusLogo from '../../assets/images/institutions/healthplus.png';
+import luthLogo from '../../assets/images/institutions/luth.png';
+import reddingtonLogo from '../../assets/images/institutions/reddington.png';
+
 export const healthcareInstitutions = [
   {
     id: '1',
     name: 'Medplus Pharmacy',
-    logo: require('../../assets/images/institutions/medplus.png') || null,
+    logo: medplusLogo || null,
     location: 'Victoria Island, Lagos',
     packageCount: 5,
     packages: [
@@ -93,7 +100,7 @@ export const healthcareInstitutions = [
   {
     id: '2',
     name: 'St. Nicholas Hospital',
-    logo: require('../../assets/images/institutions/stnicholas.png') || null,
+    logo: stnicholasLogo || null,
     location: 'Lagos Island, Lagos',
     packageCount: 4,
     packages: [
@@ -179,7 +186,7 @@ export const healthcareInstitutions = [
   {
     id: '3',
     name: 'HealthPlus Pharmacy',
-    logo: require('../../assets/images/institutions/healthplus.png') || null,
+    logo: healthplusLogo || null,
     location: 'Lekki, Lagos',
     packageCount: 3,
     packages: [
@@ -237,7 +244,7 @@ export const healthcareInstitutions = [
   {
     id: '4',
     name: 'Lagos University Teaching Hospital',
-    logo: require('../../assets/images/institutions/luth.png') || null,
+    logo: luthLogo || null,
     location: 'Idi-Araba, Lagos',
     packageCount: 4,
     packages: [
@@ -312,7 +319,7 @@ export const healthcareInstitutions = [
   {
     id: '5',
     name: 'Reddington Hospital',
-    logo: require('../../assets/images/institutions/reddington.png') || null,
+    logo: reddingtonLogo || null,
     location: 'Victoria Island, Lagos',
     packageCount: 3,
     packages: [

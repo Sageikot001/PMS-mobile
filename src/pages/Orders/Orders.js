@@ -121,7 +121,7 @@ const Orders = () => {
       ) : (
         <View style={styles.emptyContainer}>
           {/* <Image
-            source={require('../../assets/images/no-orders.png')} // Make sure to add this image
+            source={ ('../../assets/images/no-orders.png')} // Make sure to add this image
             style={styles.emptyImage}
           /> */}
           <Text style={styles.emptyText}>No Order Found</Text>

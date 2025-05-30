@@ -102,7 +102,7 @@ const Wallet = () => {
         ) : (
           <View style={styles.emptyTransactions}>
             {/* <Image 
-              source={require('../../assets/card-icon.png')}
+              source={ ('../../assets/card-icon.png')}
               style={styles.emptyIcon}
               resizeMode="contain"
             /> */}

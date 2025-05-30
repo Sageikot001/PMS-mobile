@@ -19,7 +19,7 @@ const About = () => {
       <ScrollView style={styles.content}>
         <View style={styles.logoContainer}>
           {/* <Image
-            source={require('../../assets/logo.png')}
+            source={('../../assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           /> */}

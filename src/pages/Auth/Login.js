@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { isDevelopment } from '../../config/env';
+import logo from '../../../assets/logo.png';
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState(isDevelopment() ? 'test@example.com' : '');
@@ -28,7 +29,7 @@ const Login = ({ navigation }) => {
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      setEmailError('Email is required');
+      setEmailError('Email is  d');
       return false;
     } else if (!emailRegex.test(email)) {
       setEmailError('Invalid email format');
@@ -41,7 +42,7 @@ const Login = ({ navigation }) => {
   // Validate password
   const validatePassword = (password) => {
     if (!password) {
-      setPasswordError('Password is required');
+      setPasswordError('Password is  d');
       return false;
     } else if (password.length < 6) {
       setPasswordError('Password must be at least 6 characters');
@@ -81,7 +82,7 @@ const Login = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../../assets/logo.png')}
+            source={logo}
             style={styles.logo}
             resizeMode="contain"
           />

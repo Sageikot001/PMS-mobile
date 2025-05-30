@@ -43,7 +43,7 @@ const CalorieCalculator = () => {
       </Text>
       
       {/* <Image 
-        source={require('../../../../assets/icons/calorie-illustration.png')}
+        source={ ('../../../../assets/icons/calorie-illustration.png')}
         style={styles.illustration}
       /> */}
 
@@ -211,7 +211,7 @@ const CalorieCalculator = () => {
       <View style={styles.consultSection}>
         <View style={styles.consultContent}>
           {/* <Image
-            source={require('../../../../assets/icons/pharmacist-avatar.png')}
+            source={ ('../../../../assets/icons/pharmacist-avatar.png')}
             style={styles.avatar}
           /> */}
           <View style={styles.textContainer}>

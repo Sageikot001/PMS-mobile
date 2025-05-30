@@ -72,7 +72,7 @@ const ConditionDrugs = () => {
         source={{ uri: item.imageUrl }} 
         style={styles.drugImage}
         resizeMode="contain"
-        defaultSource={require('../../../../assets/default-drug-image.png')} // Add a default image
+        defaultSource={ ('../../../../assets/default-drug-image.png')} // Add a default image
       /> */}
       <View style={styles.drugInfo}>
         <Text style={styles.drugName}>{item.name}</Text>

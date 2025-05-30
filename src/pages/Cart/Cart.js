@@ -15,7 +15,7 @@ const Cart = ({ navigation }) => {
 
       <View style={styles.emptyStateContainer}>
         {/* <Image 
-          source={require('../../assets/empty-cart.png')}
+          source={ ('../../assets/empty-cart.png')}
           style={styles.emptyCartImage}
           resizeMode="contain"
         /> */}

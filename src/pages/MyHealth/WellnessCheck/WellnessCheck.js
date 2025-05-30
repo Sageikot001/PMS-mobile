@@ -17,21 +17,21 @@ const WellnessCheck = () => {
       id: 'bmi',
       title: 'BMI checker',
       description: 'Are you a pear or apple? Find out with our BMI checker and get a grip on your health journey!',
-    //   icon: require('../../../../assets/icons/bmi-icon.png'),
+    //   icon:  ('../../../../assets/icons/bmi-icon.png'),
       route: 'BMICalculator'
     },
     {
       id: 'calorie',
       title: 'Calorie checker',
       description: "Counting calories doesn't have to be a drag! Let our calorie checker do the math for you and enjoy guilt-free snacking",
-    //   icon: require('../../../../assets/icons/calorie-icon.png'),
+    //   icon:  ('../../../../assets/icons/calorie-icon.png'),
       route: 'CalorieCalculator'
     },
     {
       id: 'ovulation',
       title: 'Ovulation checker',
       description: 'Plan the perfect dance party! Get in sync with your body and start your baby-making journey today or not',
-    //   icon: require('../../../../assets/icons/ovulation-icon.png'),
+    //   icon:  ('../../../../assets/icons/ovulation-icon.png'),
       route: 'OvulationCalculator'
     }
   ];

@@ -23,7 +23,7 @@ const ConsultationCard = () => {
           </TouchableOpacity>
         </View>
         {/* <Image
-          source={require('../../assets/doctor-illustration.png')} // You'll need to add this image
+          source={('../../assets/doctor-illustration.png')} // You'll need to add this image
           style={styles.image}
           resizeMode="contain"
         /> */}

@@ -4,7 +4,7 @@ const pharmacyData = {
       id: '1',
       name: 'HealthPlus Pharmacy',
       isChain: true,
-    //   logo: require('../assets/pharmacy-logos/healthplus.png'), // Add your logo
+    //   logo: ('../assets/pharmacy-logos/healthplus.png'), // Add your logo
       rating: 4.8,
       locations: [
         {
@@ -161,7 +161,7 @@ const pharmacyData = {
       id: '2',
       name: 'MedPlus Pharmacy',
       isChain: true,
-    //   logo: require('../assets/pharmacy-logos/medplus.png'),
+    //   logo: ('../assets/pharmacy-logos/medplus.png'),
       rating: 4.6,
       locations: [
         {
@@ -215,7 +215,7 @@ const pharmacyData = {
       id: '3',
       name: 'Local Pharmacy',
       isChain: false,
-    //   logo: require('../assets/pharmacy-logos/local.png'),
+    //   logo: ('../assets/pharmacy-logos/local.png'),
       rating: 4.5,
       address: '12 Marina Street, Lagos Island',
       openTime: '9:00 AM',

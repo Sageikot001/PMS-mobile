@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import placeholderImage from '../../../assets/images/hospitals/placeholder.png';
 
 const HospitalCard = ({ hospital, onPress }) => {
   const handleCall = () => {
@@ -13,7 +14,7 @@ const HospitalCard = ({ hospital, onPress }) => {
         <Image 
           source={hospital.image} 
           style={styles.image} 
-          defaultSource={require('../../../assets/images/hospitals/placeholder.png')}
+          defaultSource={placeholderImage}
         />
       );
     } catch (error) {

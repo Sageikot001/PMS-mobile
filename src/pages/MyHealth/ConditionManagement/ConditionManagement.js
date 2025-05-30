@@ -21,7 +21,7 @@ const ConditionManagement = () => {
 
       <View style={styles.emptyStateContainer}>
         {/* <Image 
-          source={require('../../../../assets/condition-illustration.png')}
+          source={ ('../../../../assets/condition-illustration.png')}
           style={styles.conditionIcon}
           resizeMode="contain"
         /> */}

@@ -39,7 +39,7 @@ const PersonalDetails = ({ navigation }) => {
   // Validate name
   const validateName = (name) => {
     if (!name) {
-      setNameError('Name is required');
+      setNameError('Name is  d');
       return false;
     } else if (name.length < 2) {
       setNameError('Name must be at least 2 characters');
@@ -52,7 +52,7 @@ const PersonalDetails = ({ navigation }) => {
   // Validate phone
   const validatePhone = (phone) => {
     if (!phone) {
-      setPhoneError('Phone number is required');
+      setPhoneError('Phone number is  d');
       return false;
     } else if (phone.length < 10) {
       setPhoneError('Enter a valid phone number');

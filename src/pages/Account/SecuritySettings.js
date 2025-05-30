@@ -33,7 +33,7 @@ const SecuritySettings = ({ navigation }) => {
   // Validate current password
   const validateCurrentPassword = (password) => {
     if (!password) {
-      setCurrentPasswordError('Current password is required');
+      setCurrentPasswordError('Current password is  d');
       return false;
     }
     setCurrentPasswordError('');
@@ -43,7 +43,7 @@ const SecuritySettings = ({ navigation }) => {
   // Validate new password
   const validateNewPassword = (password) => {
     if (!password) {
-      setNewPasswordError('New password is required');
+      setNewPasswordError('New password is  d');
       return false;
     } else if (password.length < 6) {
       setNewPasswordError('Password must be at least 6 characters');

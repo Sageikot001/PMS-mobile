@@ -39,7 +39,7 @@ const OvulationCalculator = () => {
       </Text>
       
       {/* <Image 
-        source={require('../../../../assets/images/ovulation-calendar.png')}
+        source={ ('../../../../assets/images/ovulation-calendar.png')}
         style={styles.illustration}
       /> */}
 

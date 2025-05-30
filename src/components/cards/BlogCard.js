@@ -16,7 +16,7 @@ const BlogCard = () => {
           </TouchableOpacity>
         </View>
         {/* <Image
-          source={require('../../assets/blog-illustration.png')} // You'll need to add this image
+          source={('../../assets/blog-illustration.png')} // You'll need to add this image
           style={styles.image}
           resizeMode="contain"
         /> */}
