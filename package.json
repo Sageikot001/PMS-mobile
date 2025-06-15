@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo-google-fonts/dancing-script": "^0.4.1",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/datetimepicker": "8.3.0",
     "@react-navigation/bottom-tabs": "^7.3.13",
@@ -17,11 +18,11 @@
     "@shopify/flash-list": "1.7.6",
     "axios": "^1.9.0",
     "expo": "^53.0.0",
+    "expo-font": "^13.3.1",
     "expo-status-bar": "~2.2.3",
     "flutterwave-react-native": "^1.0.4",
     "react": "19.0.0",
     "react-native": "0.79.2",
-    "react-native-calendars": "^1.1308.1",
     "react-native-dotenv": "^3.4.11",
     "react-native-paystack-webview": "^4.6.7",
     "react-native-safe-area-context": "5.4.0",

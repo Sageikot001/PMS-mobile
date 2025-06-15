@@ -67,7 +67,7 @@ const ProfessionalHome = ({ route }) => {
       console.log('Unknown professional type or no type specified.');
       // navigation.navigate('Login'); // Example
     }
-  }, [professional, navigation]);
+  }, [professional]);
 
   return null;
 };

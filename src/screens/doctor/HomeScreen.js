@@ -8,37 +8,55 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // For avatar placeholder
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; // For avatar placeholder
 import { useRoute, useNavigation } from '@react-navigation/native';
 
-// Mock data for appointments - replace with actual data fetching later
-const mockTodaysAppointments = [
-  {
-    id: 'apt1',
-    time: '9:00 AM',
-    patientName: 'Sarah Walker',
-    type: 'Video Call',
-  },
-  {
-    id: 'apt2',
-    time: '10:00 AM',
-    patientName: 'John Casey',
-    type: 'Phone Call',
-  },
-  {
-    id: 'apt3',
-    time: '11:30 AM',
-    patientName: 'Morgan Grimes',
-    type: 'In-Person',
-  },
-];
+// Mock data for appointments - synced with AppointmentsScreen
+const mockAppointments = {
+  // Today's appointments (using current date)
+  [new Date().toISOString().split('T')[0]]: [
+    { 
+      id: 'app1', 
+      time: '09:00 AM', 
+      patient: 'Judith Scoft', 
+      patientId: 'p1',
+      type: 'Follow-up', 
+      duration: '30 mins',
+      reason: 'Hypertension check-up',
+      nature: 'In-Person',
+      status: 'Pending'
+    },
+    { 
+      id: 'app2', 
+      time: '10:00 AM', 
+      patient: 'Samuel Cole', 
+      patientId: 'p2',
+      type: 'New Patient', 
+      duration: '45 mins',
+      reason: 'Back pain consultation',
+      nature: 'Video Call',
+      status: 'Pending'
+    },
+    { 
+      id: 'app15', 
+      time: '02:00 PM', 
+      patient: 'Emma Thompson', 
+      patientId: 'p3',
+      type: 'Video Call', 
+      duration: '30 mins',
+      reason: 'Follow-up on medication',
+      nature: 'Video Call',
+      status: 'Pending'
+    },
+  ],
+};
 
-// Mock data for recent patients - replace later
+// Mock data for recent patients - patients who recently had appointments
 const mockRecentPatients = [
-  { id: 'rp1', name: 'Chuck Bartowski' },
-  { id: 'rp2', name: 'Ellie Woodcomb' },
-  { id: 'rp3', name: 'Devon Woodcomb' },
-  { id: 'rp4', name: 'General Beckman' },
+  { id: 'p1', name: 'Judith Scoft', lastAppointment: '2024-01-10', condition: 'Hypertension' },
+  { id: 'p2', name: 'Samuel Cole', lastAppointment: '2024-01-08', condition: 'Back pain' },
+  { id: 'p3', name: 'Rose Nguyen', lastAppointment: '2024-01-05', condition: 'Diabetes follow-up' },
+  { id: 'p4', name: 'Eugene Porter', lastAppointment: '2024-01-03', condition: 'Anxiety management' },
 ];
 
 const DoctorHomeScreen = () => {
@@ -53,28 +71,47 @@ const DoctorHomeScreen = () => {
     // Add other necessary professional fields if needed for the UI
   };
 
+  // Get today's appointments
+  const todaysDate = new Date().toISOString().split('T')[0];
+  const todaysAppointments = mockAppointments[todaysDate] || [];
+
   const renderAppointmentCard = ({ item }) => (
-    <View style={styles.appointmentCard}>
+    <TouchableOpacity 
+      style={styles.appointmentCard}
+      onPress={() => navigation.navigate('AppointmentDetails', { 
+        appointmentId: item.id,
+        appointment: item 
+      })}
+    >
       <Text style={styles.appointmentTime}>{item.time}</Text>
       <View style={styles.appointmentDetails}>
-        <Text style={styles.appointmentPatientName}>{item.patientName}</Text>
-        <Text style={styles.appointmentType}>{item.type}</Text>
+        <Text style={styles.appointmentPatientName}>{item.patient}</Text>
+        <Text style={styles.appointmentType}>{item.nature} • {item.reason}</Text>
       </View>
       <View style={styles.appointmentActions}>
-        <TouchableOpacity style={styles.actionButtonSmall} onPress={() => alert('Start Phone Call')}>
-          <Ionicons name="call-outline" size={20} color="#4A90E2" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButtonSmall} onPress={() => alert('Start Video Call')}>
-          <Ionicons name="videocam-outline" size={20} color="#4A90E2" />
-        </TouchableOpacity>
+        <View style={[styles.statusIndicator, 
+          item.status === 'Accepted' ? styles.acceptedStatus : 
+          item.status === 'Rejected' ? styles.rejectedStatus : styles.pendingStatus
+        ]}>
+          <Text style={styles.statusText}>{item.status}</Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderRecentPatientCard = ({ item }) => (
-    <TouchableOpacity style={styles.recentPatientCard} onPress={() => alert(`View patient ${item.name}`)}>
-      <View style={styles.recentPatientAvatarPlaceholder} />
+    <TouchableOpacity 
+      style={styles.recentPatientCard} 
+      onPress={() => navigation.navigate('PatientDetails', { 
+        patientId: item.id, 
+        patientName: item.name 
+      })}
+    >
+      <View style={styles.recentPatientAvatarPlaceholder}>
+        <Ionicons name="person" size={30} color="#7F8C8D" />
+      </View>
       <Text style={styles.recentPatientName} numberOfLines={1}>{item.name}</Text>
+      <Text style={styles.recentPatientCondition} numberOfLines={1}>{item.condition}</Text>
     </TouchableOpacity>
   );
 
@@ -83,19 +120,40 @@ const DoctorHomeScreen = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person-circle-outline" size={50} color="#7F8C8D" />
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person-circle-outline" size={50} color="#7F8C8D" />
+            </View>
+            <Text style={styles.doctorName}>
+              Dr. {professional.firstName} {professional.lastName}
+            </Text>
           </View>
-          <Text style={styles.doctorName}>
-            Dr. {professional.firstName} {professional.lastName}
-          </Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('NotificationsScreen')}
+            >
+              <View style={styles.notificationIconContainer}>
+                <Ionicons name="notifications-outline" size={24} color="#4A90E2" />
+                {/* You can add a badge here for unread notifications */}
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>3</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Today's Appointments */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Today's Appointments</Text>
-          {mockTodaysAppointments.length > 0 ? (
-            mockTodaysAppointments.map((item) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Today's Appointments</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Appointments')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {todaysAppointments.length > 0 ? (
+            todaysAppointments.map((item) => (
               <View key={item.id}>{renderAppointmentCard({ item })}</View>
             ))
           ) : (
@@ -105,19 +163,24 @@ const DoctorHomeScreen = () => {
 
         {/* Quick Actions */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity style={styles.quickActionButton} onPress={() => alert('Write Rx')}>
-            <Ionicons name="pencil-outline" size={24} color="#4A90E2" />
+          <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('PrescriptionQueue')}>
+            <MaterialCommunityIcons name="prescription" size={24} color="#4A90E2" />
             <Text style={styles.quickActionButtonText}>Write Rx</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton} onPress={() => alert('Start Call')}>
-            <Ionicons name="play-circle-outline" size={24} color="#4A90E2" />
-            <Text style={styles.quickActionButtonText}>Start Call</Text>
+          <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('Appointments')}>
+            <Ionicons name="calendar-outline" size={24} color="#4A90E2" />
+            <Text style={styles.quickActionButtonText}>Appointments</Text>
           </TouchableOpacity>
         </View>
 
         {/* Recent Patients */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Recent Patients</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Patients</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Patients')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentPatientsScroll}>
             {mockRecentPatients.map((patient) => (
               <View key={patient.id}>{renderRecentPatientCard({item: patient})}</View>
@@ -138,10 +201,15 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatarPlaceholder: {
     width: 50,
@@ -157,17 +225,51 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2C3E50',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  notificationButton: {
+    padding: 5,
+  },
+  notificationIconContainer: {
+    position: 'relative',
+  },
+  notificationBadge: {
+    backgroundColor: '#4A90E2',
+    borderRadius: 12,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    position: 'absolute',
+    top: -5,
+    right: -5,
+  },
+  notificationBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   // Section
   sectionContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#2C3E50',
-    marginBottom: 15,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    fontWeight: '500',
   },
   emptyStateText: {
     textAlign: 'center',
@@ -212,11 +314,26 @@ const styles = StyleSheet.create({
   appointmentActions: {
     flexDirection: 'row',
   },
-  actionButtonSmall: {
-    padding: 8,
-    marginLeft: 8,
-    // backgroundColor: '#EBF5FF',
-    // borderRadius: 20,
+  statusIndicator: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  pendingStatus: {
+    backgroundColor: '#FFF3CD',
+  },
+  acceptedStatus: {
+    backgroundColor: '#D4EDDA',
+  },
+  rejectedStatus: {
+    backgroundColor: '#F8D7DA',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2C3E50',
   },
   // Quick Actions
   quickActionsContainer: {
@@ -271,11 +388,20 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: '#E9ECEF',
     marginBottom: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   recentPatientName: {
     fontSize: 12,
     color: '#2C3E50',
     textAlign: 'center',
+    fontWeight: '600',
+  },
+  recentPatientCondition: {
+    fontSize: 10,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginTop: 2,
   },
 });
 

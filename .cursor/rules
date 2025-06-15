@@ -1,0 +1,175 @@
+# PMS Mobile - React Native/Expo Project Rules
+
+## Project Overview
+This is a React Native mobile application built with Expo for a Patient Management System (PMS). The app includes navigation, payment integration (Paystack/Flutterwave), calendar functionality, and data management.
+
+## Technology Stack
+- Framework: React Native with Expo SDK 52
+- Navigation: React Navigation v7 (Stack & Bottom Tabs)
+- State Management: React Context API
+- Storage: AsyncStorage
+- Payments: Paystack & Flutterwave
+- UI Components: Native React Native components
+- Calendar: react-native-calendars
+- HTTP Client: Axios
+- Package Manager: Yarn
+
+## Code Style & Standards
+
+### File Structure
+- Use kebab-case for file and folder names
+- Components should be in PascalCase (e.g., UserProfile.js)
+- Screens should be in PascalCase and end with "Screen" (e.g., HomeScreen.js)
+- Services and utilities should be camelCase (e.g., apiService.js)
+
+### Component Guidelines
+- Use functional components with hooks
+- Prefer arrow functions for component definitions
+- Use destructuring for props
+- Keep components small and focused (single responsibility)
+- Use React.memo for performance optimization when needed
+
+### State Management
+- Use React Context for global state
+- Use useState for local component state
+- Use useEffect for side effects
+- Implement proper cleanup in useEffect when needed 
+
+### Styling
+- Use StyleSheet.create() for component styles
+- Follow React Native styling conventions
+- Use consistent spacing and color schemes
+- Implement responsive design principles
+- Use flexbox for layouts
+
+### Navigation
+- Use React Navigation v7 patterns
+- Implement proper screen options and headers
+- Use typed navigation for better development experience
+- Handle deep linking appropriately
+
+### API & Data
+- Use Axios for HTTP requests
+- Implement proper error handling
+- Use async/await for asynchronous operations
+- Store sensitive data securely using AsyncStorage
+- Implement proper loading states
+
+### Performance
+- Use FlatList/FlashList for large lists
+- Implement proper image optimization
+- Use lazy loading where appropriate
+- Minimize re-renders with proper dependency arrays
+
+### Error Handling
+- Implement try-catch blocks for async operations
+- Provide user-friendly error messages
+- Log errors appropriately for debugging
+- Handle network connectivity issues
+
+### Security
+- Never commit sensitive data (API keys, secrets)
+- Use environment variables for configuration
+- Validate user inputs
+- Implement proper authentication flows
+
+## Folder Structure Guidelines
+src/
+├── components/     # Reusable UI components
+├── screens/        # Screen components
+├── navigation/     # Navigation configuration
+├── services/       # API services and utilities
+├── context/        # React Context providers
+├── config/         # App configuration
+├── data/          # Static data and constants
+└── pages/         # Additional page components
+
+## Development Practices
+
+### Git Workflow
+- Use meaningful commit messages
+- Create feature branches for new functionality
+- Keep commits atomic and focused
+- Use conventional commit format when possible
+
+### Code Review
+- Review for performance implications
+- Check for proper error handling
+- Ensure consistent styling
+- Verify navigation flows work correctly
+
+### Expo Specific
+- Use Expo SDK compatible packages when possible
+- Test on both iOS and Android
+- Use Expo development build for custom native code
+- Follow Expo best practices for app store deployment
+
+## Common Patterns
+
+### Screen Component Template
+```javascript
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+const ExampleScreen = ({ navigation, route }) => {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Component initialization
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Text>Screen Content</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+});
+
+export default ExampleScreen;
+```
+
+### API Service Pattern
+```javascript
+import axios from 'axios';
+
+const apiClient = axios.create({
+  baseURL: process.env.API_BASE_URL,
+  timeout: 10000,
+});
+
+export const apiService = {
+  async getData() {
+    try {
+      const response = await apiClient.get('/data');
+      return response.data;
+    } catch (error) {
+      throw new Error(`API Error: ${error.message}`);
+    }
+  },
+};
+```
+
+## Dependencies Management
+- Keep dependencies up to date
+- Use exact versions for critical packages
+- Regularly audit for security vulnerabilities
+- Document any custom native modules
+
+## Deployment
+- Test thoroughly on both platforms
+- Use Expo EAS Build for production builds
+- Follow app store guidelines
+- Implement proper versioning strategy
+
+## Notes
+- Always test payment flows in sandbox mode first
+- Ensure proper handling of device permissions
+- Implement proper offline functionality where needed
+- Consider accessibility guidelines (a11y)

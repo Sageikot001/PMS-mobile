@@ -17,7 +17,18 @@ const DoctorTabNavigator = () => {
         headerShown: false,
         tabBarActiveTintColor: '#4A90E2',
         tabBarInactiveTintColor: '#7F8C8D',
-        tabBarStyle: { backgroundColor: '#fff', borderTopWidth: 0.5, borderTopColor: '#E9ECEF' },
+        tabBarStyle: { 
+          backgroundColor: '#fff', 
+          borderTopWidth: 0.5, 
+          borderTopColor: '#E9ECEF',
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
         tabBarIcon: ({ color, size }) => {
           switch (route.name) {
             case 'Home':
@@ -25,7 +36,7 @@ const DoctorTabNavigator = () => {
             case 'Patients':
               return <Ionicons name="people-outline" size={size} color={color} />;
             case 'Appointments':
-              return <MaterialCommunityIcons name="calendar-check-outline" size={size} color={color} />;
+              return <Ionicons name="calendar-outline" size={size} color={color} />;
             case 'Earnings':
               return <Ionicons name="cash-outline" size={size} color={color} />;
             case 'Profile':

@@ -182,6 +182,35 @@ const mockPatientFullDetails = {
     },
     currentMedication: ['Insulin Glargine', 'Empagliflozin 10mg', 'Metformin 1000mg (paused)'],
   },
+  patient_emma: {
+    id: 'patient_emma',
+    name: 'Emma Thompson',
+    age: 28,
+    gender: 'Female',
+    bloodType: 'B+',
+    contact: '555-0107',
+    email: 'emma.thompson@email.com',
+    address: '789 Pine St, Manhattan, NY 10002',
+    profilePicUrl: null,
+    medicalHistory: [
+      { date: '2025-06-01', type: 'Follow-up', summary: 'Medication effectiveness review', doctor: 'Dr. Amelia Stone' },
+      { date: '2025-05-15', type: 'Initial Consultation', summary: 'Anxiety and sleep issues assessment', doctor: 'Dr. Amelia Stone' },
+    ],
+    prescriptions: [
+      { date: '2025-06-01', drug: 'Sertraline 50mg', dosage: '1 daily', status: 'Active' },
+      { date: '2025-06-01', drug: 'Melatonin 3mg', dosage: '1 before bedtime', status: 'Active' },
+    ],
+    notes: [
+      { date: '2025-06-01', note: 'Patient reports improvement in anxiety symptoms. Sleep quality still needs monitoring.', author: 'Dr. Amelia Stone' },
+    ],
+    vitals: {
+      height: '165cm',
+      weight: '58kg',
+      bp: '115/75 mmHg',
+      temperature: '98.6°F',
+    },
+    currentMedication: ['Sertraline 50mg', 'Melatonin 3mg'],
+  },
 };
 
 const TabButton = ({ title, onPress, isActive }) => (
@@ -201,7 +230,7 @@ const PatientDetailsScreen = () => {
   const { patientId } = route.params;
 
   const [patient, setPatient] = useState(null);
-  const [activeTab, setActiveTab] = useState('Info'); // 'Info', 'History', 'Notes'
+  const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     console.log('[PatientDetailsScreen] useEffect triggered. patientId:', patientId);
@@ -212,14 +241,12 @@ const PatientDetailsScreen = () => {
     
     setPatient(fetchedPatient);
     
+    // Set navigation title immediately after setting patient data
     if (fetchedPatient) {
       console.log('[PatientDetailsScreen] Setting navigation title to:', fetchedPatient.name);
       navigation.setOptions({ title: fetchedPatient.name });
-    } else {
-      console.warn('[PatientDetailsScreen] No patient found for ID:', patientId, '- The screen will remain in loading state.');
-      // navigation.setOptions({ title: 'Patient Not Found' }); // Optionally set a different title
     }
-  }, [patientId, navigation]);
+  }, [patientId]);
 
   if (!patient) {
     return (
@@ -306,18 +333,27 @@ const PatientDetailsScreen = () => {
         {/* Patient Name is now set in navigation options */}
       </View>
 
-      <View style={styles.tabContainer}>
-        <TabButton title="Info" onPress={() => setActiveTab('Info')} isActive={activeTab === 'Info'} />
-        <TabButton title="History" onPress={() => setActiveTab('History')} isActive={activeTab === 'History'} />
-        <TabButton title="Notes" onPress={() => setActiveTab('Notes')} isActive={activeTab === 'Notes'} />
+      <View style={styles.tabBar}>
+        <TouchableOpacity onPress={() => setActiveTab('info')} style={[styles.tabButton, activeTab === 'info' && styles.activeTabButton]}>
+          <Text style={activeTab === 'info' ? styles.activeTabText : styles.tabText}>Info</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setActiveTab('history')} style={[styles.tabButton, activeTab === 'history' && styles.activeTabButton]}>
+          <Text style={activeTab === 'history' ? styles.activeTabText : styles.tabText}>History</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setActiveTab('notes')} style={[styles.tabButton, activeTab === 'notes' && styles.activeTabButton]}>
+          <Text style={activeTab === 'notes' ? styles.activeTabText : styles.tabText}>Notes</Text>
+        </TouchableOpacity>
       </View>
 
-      {activeTab === 'Info' && renderInfoTab()}
-      {activeTab === 'History' && renderHistoryTab()}
-      {activeTab === 'Notes' && renderNotesTab()}
+      {activeTab === 'info' && renderInfoTab()}
+      {activeTab === 'history' && renderHistoryTab()}
+      {activeTab === 'notes' && renderNotesTab()}
       
       <View style={styles.bottomActionsContainer}>
-        <TouchableOpacity style={styles.actionButtonFull} onPress={() => alert('Write Rx for ' + patient.name)}>
+        <TouchableOpacity
+          style={styles.actionButtonFull}
+          onPress={() => navigation.navigate('Prescription', { patient })}
+        >
             <Ionicons name="pencil-outline" size={22} color="#FFFFFF" />
             <Text style={styles.actionButtonFullText}>Write Prescription</Text>
         </TouchableOpacity>
@@ -355,7 +391,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   // Tabs
-  tabContainer: {
+  tabBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
@@ -371,12 +407,12 @@ const styles = StyleSheet.create({
   activeTabButton: {
     borderBottomColor: '#4A90E2',
   },
-  tabButtonText: {
+  tabText: {
     fontSize: 16,
     color: '#7F8C8D',
     fontWeight: '500',
   },
-  activeTabButtonText: {
+  activeTabText: {
     color: '#4A90E2',
     fontWeight: '600',
   },
@@ -425,52 +461,31 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   historyItem: {
-    backgroundColor: '#FFFFFF',
-    padding: 15,
-    borderRadius: 10,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   historyDate: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginBottom: 3,
+    fontSize: 14,
+    color: '#566573',
   },
   historyType: {
     fontSize: 15,
     fontWeight: '600',
     color: '#2C3E50',
-    marginBottom: 3,
   },
   historySummary: {
+    fontSize: 15,
+    color: '#7F8C8D',
+  },
+  noteItem: {
+    marginBottom: 10,
+  },
+  noteDate: {
     fontSize: 14,
     color: '#566573',
   },
-  noteItem: {
-    backgroundColor: '#FFFFFF',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  noteDate: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginBottom: 5,
-    fontStyle: 'italic',
-  },
   noteText: {
     fontSize: 15,
-    color: '#2C3E50',
-    lineHeight: 22,
+    color: '#7F8C8D',
   },
   bottomActionsContainer: {
       padding: 20,
