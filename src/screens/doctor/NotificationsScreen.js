@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Vibration,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -15,8 +16,11 @@ import notificationService from '../../services/NotificationService';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
+  const [activeTab, setActiveTab] = useState('history'); // 'history' or 'scheduled'
   const [notifications, setNotifications] = useState([]);
   const [scheduledNotifications, setScheduledNotifications] = useState([]);
+  const [selectedNotifications, setSelectedNotifications] = useState([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -36,7 +40,7 @@ const NotificationsScreen = () => {
       setNotifications(history);
       
       // Load scheduled notifications
-      const scheduled = notificationService.getScheduledNotifications();
+      const scheduled = await notificationService.getScheduledNotifications();
       setScheduledNotifications(scheduled);
       
     } catch (error) {
@@ -52,6 +56,114 @@ const NotificationsScreen = () => {
     await loadNotifications();
     setRefreshing(false);
   }, []);
+
+  // Handle notification click - navigate to relevant screen
+  const handleNotificationPress = (notification) => {
+    if (isSelectionMode) {
+      toggleNotificationSelection(notification.id);
+      return;
+    }
+
+    // Navigate based on notification type and data
+    switch (notification.type) {
+      case 'appointment_reminder':
+        if (notification.appointmentId) {
+          navigation.navigate('AppointmentDetails', { 
+            appointmentId: notification.appointmentId 
+          });
+        } else {
+          navigation.navigate('Appointments');
+        }
+        break;
+      case 'chat':
+        if (notification.chatId) {
+          navigation.navigate('ChatScreen', { 
+            chatId: notification.chatId 
+          });
+        } else {
+          navigation.navigate('ChatListScreen');
+        }
+        break;
+      case 'call':
+        if (notification.chatId) {
+          navigation.navigate('ChatScreen', { 
+            chatId: notification.chatId 
+          });
+        } else {
+          navigation.navigate('ChatListScreen');
+        }
+        break;
+      case 'appointment_ready':
+        if (notification.appointmentId) {
+          navigation.navigate('AppointmentDetails', { 
+            appointmentId: notification.appointmentId 
+          });
+        } else {
+          navigation.navigate('Appointments');
+        }
+        break;
+      default:
+        // Default to appointments screen
+        navigation.navigate('Appointments');
+        break;
+    }
+  };
+
+  // Handle long press - enter selection mode
+  const handleNotificationLongPress = (notification) => {
+    Vibration.vibrate(50); // Haptic feedback
+    setIsSelectionMode(true);
+    setSelectedNotifications([notification.id]);
+  };
+
+  // Toggle notification selection
+  const toggleNotificationSelection = (notificationId) => {
+    setSelectedNotifications(prev => {
+      if (prev.includes(notificationId)) {
+        const newSelection = prev.filter(id => id !== notificationId);
+        if (newSelection.length === 0) {
+          setIsSelectionMode(false);
+        }
+        return newSelection;
+      } else {
+        return [...prev, notificationId];
+      }
+    });
+  };
+
+  // Delete selected notifications
+  const deleteSelectedNotifications = () => {
+    Alert.alert(
+      'Delete Notifications',
+      `Delete ${selectedNotifications.length} notification${selectedNotifications.length > 1 ? 's' : ''}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await notificationService.deleteNotifications(selectedNotifications);
+              setNotifications(prev => 
+                prev.filter(notification => !selectedNotifications.includes(notification.id))
+              );
+              setSelectedNotifications([]);
+              setIsSelectionMode(false);
+              Alert.alert('Success', 'Notifications deleted');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete notifications');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Cancel selection mode
+  const cancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectedNotifications([]);
+  };
 
   const handleClearAllNotifications = () => {
     Alert.alert(
@@ -161,17 +273,28 @@ const NotificationsScreen = () => {
   const renderNotificationItem = ({ item: notification }) => {
     const iconColor = getNotificationColor(notification.type);
     const iconName = getNotificationIcon(notification.type);
+    const isSelected = selectedNotifications.includes(notification.id);
 
     return (
       <TouchableOpacity
-        style={styles.notificationItem}
-        onPress={() => {
-          // Handle notification tap - navigate to relevant screen
-          if (notification.onPress) {
-            notification.onPress();
-          }
-        }}
+        style={[
+          styles.notificationItem,
+          isSelected && styles.selectedNotificationItem
+        ]}
+        onPress={() => handleNotificationPress(notification)}
+        onLongPress={() => handleNotificationLongPress(notification)}
+        delayLongPress={500}
       >
+        {isSelectionMode && (
+          <View style={styles.selectionIndicator}>
+            <Ionicons 
+              name={isSelected ? "checkmark-circle" : "ellipse-outline"} 
+              size={24} 
+              color={isSelected ? "#4A90E2" : "#ADB5BD"} 
+            />
+          </View>
+        )}
+        
         <View style={[styles.iconContainer, { backgroundColor: iconColor }]}>
           <Ionicons name={iconName} size={20} color="#ffffff" />
         </View>
@@ -193,12 +316,35 @@ const NotificationsScreen = () => {
     const iconColor = getNotificationColor(notification.type);
     const iconName = getNotificationIcon(notification.type);
     const isOverdue = new Date(notification.scheduledTime) < new Date();
+    const isSelected = selectedNotifications.includes(notification.id);
 
     return (
       <TouchableOpacity
-        style={[styles.scheduledNotificationItem, isOverdue && styles.overdueNotification]}
-        onPress={() => handleCancelScheduledNotification(notification.id)}
+        style={[
+          styles.scheduledNotificationItem, 
+          isOverdue && styles.overdueNotification,
+          isSelected && styles.selectedNotificationItem
+        ]}
+        onPress={() => {
+          if (isSelectionMode) {
+            toggleNotificationSelection(notification.id);
+          } else {
+            handleCancelScheduledNotification(notification.id);
+          }
+        }}
+        onLongPress={() => handleNotificationLongPress(notification)}
+        delayLongPress={500}
       >
+        {isSelectionMode && (
+          <View style={styles.selectionIndicator}>
+            <Ionicons 
+              name={isSelected ? "checkmark-circle" : "ellipse-outline"} 
+              size={24} 
+              color={isSelected ? "#4A90E2" : "#ADB5BD"} 
+            />
+          </View>
+        )}
+        
         <View style={[styles.iconContainer, { backgroundColor: iconColor }]}>
           <Ionicons name={iconName} size={20} color="#ffffff" />
         </View>
@@ -209,11 +355,14 @@ const NotificationsScreen = () => {
             {notification.message}
           </Text>
           <Text style={[styles.scheduledTime, isOverdue && styles.overdueText]}>
-            Scheduled for: {formatScheduledTime(notification.scheduledTime)}
+            Scheduled: {formatScheduledTime(notification.scheduledTime)}
           </Text>
+          {isOverdue && (
+            <Text style={styles.overdueLabel}>OVERDUE</Text>
+          )}
         </View>
         
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.cancelButton}
           onPress={() => handleCancelScheduledNotification(notification.id)}
         >
@@ -254,61 +403,99 @@ const NotificationsScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#2C3E50" />
         </TouchableOpacity>
         
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>
+          {isSelectionMode ? `${selectedNotifications.length} Selected` : 'Notifications'}
+        </Text>
         
-        <TouchableOpacity 
-          style={styles.clearButton}
-          onPress={handleClearAllNotifications}
+        {isSelectionMode ? (
+          <View style={styles.selectionActions}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={deleteSelectedNotifications}
+            >
+              <Ionicons name="trash" size={24} color="#dc3545" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={cancelSelection}
+            >
+              <Ionicons name="close" size={24} color="#2C3E50" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.clearButton}
+              onPress={() => {
+                // Debug: Show notification service status
+                const status = notificationService.getServiceStatus();
+                Alert.alert(
+                  'Notification Service Status',
+                  `Running: ${status.isServiceRunning}\nScheduled: ${status.scheduledNotificationsCount}\nSent: ${status.sentNotificationsCount}\n\nScheduled Notifications:\n${status.scheduledNotifications.map(n => `${n.title} at ${new Date(n.scheduledTime).toLocaleString()}`).join('\n')}`
+                );
+              }}
+            >
+              <Ionicons name="information-circle-outline" size={24} color="#4A90E2" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.clearButton}
+              onPress={handleClearAllNotifications}
+            >
+              <Ionicons name="trash-outline" size={24} color="#dc3545" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+          onPress={() => setActiveTab('history')}
         >
-          <Ionicons name="trash-outline" size={24} color="#dc3545" />
+          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+            History ({notifications.length})
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'scheduled' && styles.activeTab]}
+          onPress={() => setActiveTab('scheduled')}
+        >
+          <Text style={[styles.tabText, activeTab === 'scheduled' && styles.activeTabText]}>
+            Scheduled ({scheduledNotifications.length})
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <View style={styles.tabsWrapper}>
-          <TouchableOpacity style={[styles.tab, styles.activeTab]}>
-            <Text style={[styles.tabText, styles.activeTabText]}>
-              History ({notifications.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tab}>
-            <Text style={styles.tabText}>
-              Scheduled ({scheduledNotifications.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Notification Lists */}
-      <View style={styles.content}>
-        {/* Recent Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Notifications</Text>
-          <FlatList
-            data={notifications.slice(0, 10)} // Show last 10 notifications
-            renderItem={renderNotificationItem}
-            keyExtractor={(item, index) => `notification_${item.id || index}`}
-            ListEmptyComponent={renderEmptyNotifications}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-
-        {/* Scheduled Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Scheduled Notifications</Text>
-          <FlatList
-            data={scheduledNotifications}
-            renderItem={renderScheduledNotificationItem}
-            keyExtractor={(item) => item.id}
-            ListEmptyComponent={renderEmptyScheduled}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      </View>
+      {/* Content */}
+      {activeTab === 'history' ? (
+        <FlatList
+          data={notifications}
+          renderItem={renderNotificationItem}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={notifications.length === 0 ? styles.emptyContainer : null}
+          ListEmptyComponent={renderEmptyNotifications}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <FlatList
+          data={scheduledNotifications}
+          renderItem={renderScheduledNotificationItem}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={scheduledNotifications.length === 0 ? styles.emptyContainer : null}
+          ListEmptyComponent={renderEmptyScheduled}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -336,6 +523,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#2C3E50',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   clearButton: {
     padding: 8,
@@ -462,6 +653,36 @@ const styles = StyleSheet.create({
     color: '#ADB5BD',
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  selectedNotificationItem: {
+    backgroundColor: '#E9ECEF',
+  },
+  overdueLabel: {
+    color: '#dc3545',
+    fontWeight: '600',
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    padding: 8,
+  },
+  list: {
+    flex: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

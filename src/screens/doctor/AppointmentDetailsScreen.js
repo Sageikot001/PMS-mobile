@@ -14,62 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import chatService from '../../services/ChatService';
 import notificationService from '../../services/NotificationService';
-
-// Mock appointment data - replace with real data from props/API
-const mockAppointmentDetails = {
-  app1: {
-    id: 'app1',
-    patient: 'Judith Scoft',
-    type: 'Follow-up',
-    date: '2025-06-15',
-    time: '09:00 AM',
-    duration: '30 mins',
-    status: 'accepted', // 'pending', 'accepted', 'completed', 'cancelled'
-    patientId: 'patient_judith',
-    notes: 'Follow-up appointment for blood pressure monitoring. Patient requested video consultation.',
-    symptoms: ['Headaches', 'Dizziness', 'High Blood Pressure'],
-    previousVisit: '2025-05-20',
-    contactInfo: {
-      phone: '+1 (555) 123-4567',
-      email: 'judith.scoft@email.com'
-    }
-  },
-  app2: {
-    id: 'app2',
-    patient: 'Samuel Cole',
-    type: 'New Patient',
-    date: '2025-06-15',
-    time: '10:00 AM',
-    duration: '45 mins',
-    status: 'pending',
-    patientId: 'patient_samuel',
-    notes: 'New patient consultation. Initial assessment required.',
-    symptoms: ['Chest Pain', 'Shortness of Breath'],
-    previousVisit: null,
-    contactInfo: {
-      phone: '+1 (555) 987-6543',
-      email: 'samuel.cole@email.com'
-    }
-  },
-  app15: {
-    id: 'app15',
-    patient: 'Emma Thompson',
-    type: 'Video Call',
-    date: '2025-06-15',
-    time: '02:00 PM',
-    duration: '30 mins',
-    status: 'pending',
-    patientId: 'patient_emma',
-    notes: 'Follow-up on medication effectiveness. Patient prefers video consultation.',
-    symptoms: ['Medication Side Effects', 'Sleep Issues'],
-    previousVisit: '2025-06-01',
-    contactInfo: {
-      phone: '+1 (555) 456-7890',
-      email: 'emma.thompson@email.com'
-    }
-  },
-  // Add more mock data as needed
-};
+import { getAppointmentById } from '../../data/appointmentsData';
 
 // Simple custom calendar component
 const SimpleCalendar = ({ selectedDate, onDatePress, minDate }) => {
@@ -176,13 +121,91 @@ const AppointmentDetailsScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [rescheduleReason, setRescheduleReason] = useState('');
+  const [showCallOptionsModal, setShowCallOptionsModal] = useState(false);
+  const [selectedCallType, setSelectedCallType] = useState('voice'); // 'voice' or 'video'
 
   // Available time slots for rescheduling
-  const timeSlots = [
-    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM',
-    '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
-    '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM',
-    '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM'
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const time24 = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const period = hour < 12 ? 'AM' : 'PM';
+        const time12 = `${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${period}`;
+        
+        slots.push({
+          time24,
+          time12,
+          hour,
+          minute,
+          isBusinessHours: hour >= 8 && hour < 18, // Default business hours 8 AM - 6 PM
+        });
+      }
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  // Doctor's availability settings (in a real app, this would come from backend)
+  const [doctorAvailability] = useState({
+    // Default availability - business hours only
+    enabledHours: Array.from({length: 10}, (_, i) => i + 8), // 8 AM to 5 PM
+    disabledSlots: [], // Specific time slots that are unavailable
+    customAvailableSlots: [], // Custom slots outside business hours
+  });
+
+  // Check if a time slot is available for selection
+  const isTimeSlotAvailable = (timeSlot) => {
+    const { hour } = timeSlot;
+    const timeKey = timeSlot.time24;
+    
+    // Check if hour is enabled
+    if (!doctorAvailability.enabledHours.includes(hour)) {
+      // Check if this specific slot is in custom available slots
+      return doctorAvailability.customAvailableSlots.includes(timeKey);
+    }
+    
+    // Check if this specific slot is disabled
+    return !doctorAvailability.disabledSlots.includes(timeKey);
+  };
+
+  // Get filtered available time slots
+  const getAvailableTimeSlots = () => {
+    return timeSlots.filter(isTimeSlotAvailable);
+  };
+
+  // Call options configuration
+  const callOptions = [
+    {
+      id: 'inapp',
+      name: 'In-App Call',
+      icon: 'call',
+      color: '#4A90E2',
+      description: 'Secure, encrypted call within the app'
+    },
+    {
+      id: 'whatsapp',
+      name: 'WhatsApp',
+      icon: 'logo-whatsapp',
+      color: '#25D366',
+      description: 'Call via WhatsApp'
+    },
+    {
+      id: 'zoom',
+      name: 'Zoom',
+      icon: 'videocam',
+      color: '#2D8CFF',
+      description: 'Professional video conferencing'
+    },
+    {
+      id: 'gmail',
+      name: 'Google Meet',
+      icon: 'mail',
+      color: '#EA4335',
+      description: 'Call via Google Meet'
+    }
   ];
 
   useEffect(() => {
@@ -199,7 +222,7 @@ const AppointmentDetailsScreen = () => {
 
   const loadAppointmentDetails = () => {
     // In a real app, you'd fetch this from your API
-    const appointmentData = mockAppointmentDetails[appointmentId];
+    const appointmentData = getAppointmentById(appointmentId);
     if (appointmentData) {
       setAppointment(appointmentData);
     } else {
@@ -267,14 +290,21 @@ const AppointmentDetailsScreen = () => {
 
     setTimeUntilAppointment(minutesUntil);
 
-    // Check if it's appointment time (within 5 minutes)
-    if (minutesUntil <= 5 && minutesUntil >= -10 && appointment.status === 'accepted') {
-      // Send "patient is waiting" notification
-      notificationService.showNotification(
-        'Appointment Ready',
-        `${appointment.patient} is waiting for you. Don't keep them waiting!`,
-        'appointment_ready'
-      );
+    // Only show "patient is waiting" notification when appointment time arrives (0 to -5 minutes)
+    // and only once per appointment to avoid spam
+    if (minutesUntil <= 0 && minutesUntil >= -5 && appointment.status === 'accepted') {
+      const notificationId = `patient_waiting_${appointment.id}`;
+      
+      // Check if we've already shown this notification
+      if (!appointment.patientWaitingNotificationSent) {
+        notificationService.showAppointmentReadyNotification(appointment);
+        
+        // Mark that we've sent this notification
+        setAppointment(prev => ({ 
+          ...prev, 
+          patientWaitingNotificationSent: true 
+        }));
+      }
     }
   };
 
@@ -365,27 +395,8 @@ const AppointmentDetailsScreen = () => {
       return;
     }
 
-    try {
-      // Get or create chat for the call
-      const chat = await chatService.createChat(
-        appointment.patientId,
-        appointment.patient,
-        'patient'
-      );
-      
-      const callData = await chatService.initiateVoiceCall(chat.id);
-      Alert.alert(
-        'Voice Call',
-        `Starting voice call with ${appointment.patient}`,
-        [
-          { text: 'End Call', onPress: () => chatService.endCall(callData.callId) },
-          { text: 'Continue', style: 'cancel' }
-        ]
-      );
-    } catch (error) {
-      console.error('Error starting voice call:', error);
-      Alert.alert('Error', 'Failed to start voice call');
-    }
+    setSelectedCallType('voice');
+    setShowCallOptionsModal(true);
   };
 
   const handleVideoCall = async () => {
@@ -400,6 +411,39 @@ const AppointmentDetailsScreen = () => {
       return;
     }
 
+    setSelectedCallType('video');
+    setShowCallOptionsModal(true);
+  };
+
+  // Handle call option selection
+  const handleCallOptionSelect = async (option) => {
+    setShowCallOptionsModal(false);
+    
+    try {
+      switch (option.id) {
+        case 'inapp':
+          await handleInAppCall();
+          break;
+        case 'whatsapp':
+          await handleWhatsAppCall();
+          break;
+        case 'zoom':
+          await handleZoomCall();
+          break;
+        case 'gmail':
+          await handleGoogleMeetCall();
+          break;
+        default:
+          Alert.alert('Error', 'Call option not supported');
+      }
+    } catch (error) {
+      console.error('Error handling call option:', error);
+      Alert.alert('Error', 'Failed to initiate call');
+    }
+  };
+
+  // In-app call handling
+  const handleInAppCall = async () => {
     try {
       // Get or create chat for the call
       const chat = await chatService.createChat(
@@ -408,19 +452,80 @@ const AppointmentDetailsScreen = () => {
         'patient'
       );
       
-      const callData = await chatService.initiateVideoCall(chat.id);
+      const callData = selectedCallType === 'video' 
+        ? await chatService.initiateVideoCall(chat.id)
+        : await chatService.initiateVoiceCall(chat.id);
+      
       Alert.alert(
-        'Video Call',
-        `Starting video call with ${appointment.patient}`,
+        `${selectedCallType === 'video' ? 'Video' : 'Voice'} Call`,
+        `Starting ${selectedCallType} call with ${appointment.patient}`,
         [
           { text: 'End Call', onPress: () => chatService.endCall(callData.callId) },
           { text: 'Continue', style: 'cancel' }
         ]
       );
     } catch (error) {
-      console.error('Error starting video call:', error);
-      Alert.alert('Error', 'Failed to start video call');
+      console.error('Error starting in-app call:', error);
+      Alert.alert('Error', 'Failed to start in-app call');
     }
+  };
+
+  // WhatsApp call handling
+  const handleWhatsAppCall = async () => {
+    const phoneNumber = appointment.contactInfo?.phone?.replace(/[^\d]/g, '');
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Patient phone number not available');
+      return;
+    }
+
+    const whatsappUrl = `whatsapp://call?phone=${phoneNumber}`;
+    
+    Alert.alert(
+      'WhatsApp Call',
+      `Call ${appointment.patient} via WhatsApp?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call',
+          onPress: () => {
+            // In a real app, you'd use Linking.openURL(whatsappUrl)
+            Alert.alert('WhatsApp Call', 'Opening WhatsApp...');
+          }
+        }
+      ]
+    );
+  };
+
+  // Zoom call handling
+  const handleZoomCall = async () => {
+    // In a real app, you'd integrate with Zoom SDK
+    const meetingId = `${appointment.id}-${Date.now()}`;
+    const zoomUrl = `https://zoom.us/j/${meetingId}`;
+    
+    Alert.alert(
+      'Zoom Meeting',
+      `Meeting ID: ${meetingId}\n\nShare this meeting link with ${appointment.patient}:\n${zoomUrl}`,
+      [
+        { text: 'Copy Link', onPress: () => Alert.alert('Link Copied', 'Meeting link copied to clipboard') },
+        { text: 'Start Meeting', onPress: () => Alert.alert('Zoom', 'Opening Zoom...') }
+      ]
+    );
+  };
+
+  // Google Meet call handling
+  const handleGoogleMeetCall = async () => {
+    // In a real app, you'd integrate with Google Meet API
+    const meetingCode = `${appointment.id}-${Date.now().toString().slice(-6)}`;
+    const meetUrl = `https://meet.google.com/${meetingCode}`;
+    
+    Alert.alert(
+      'Google Meet',
+      `Meeting Code: ${meetingCode}\n\nShare this meeting link with ${appointment.patient}:\n${meetUrl}`,
+      [
+        { text: 'Copy Link', onPress: () => Alert.alert('Link Copied', 'Meeting link copied to clipboard') },
+        { text: 'Join Meeting', onPress: () => Alert.alert('Google Meet', 'Opening Google Meet...') }
+      ]
+    );
   };
 
   const handleCompleteAppointment = () => {
@@ -549,7 +654,7 @@ const AppointmentDetailsScreen = () => {
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-vertical" size={24} color="#2C3E50" />
         </TouchableOpacity>
-      </View>
+        </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Patient Info Card */}
@@ -566,12 +671,12 @@ const AppointmentDetailsScreen = () => {
             </View>
             <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
               <Text style={styles.statusText}>{statusInfo.text}</Text>
-            </View>
-          </View>
+        </View>
+              </View>
           <View style={styles.clickHint}>
             <Ionicons name="chevron-forward" size={16} color="#7F8C8D" />
             <Text style={styles.clickHintText}>Tap to view patient details</Text>
-          </View>
+              </View>
         </TouchableOpacity>
 
         {/* Appointment Details Card */}
@@ -581,37 +686,37 @@ const AppointmentDetailsScreen = () => {
           <View style={styles.infoRow}>
             <Ionicons name="calendar" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>{appointment.date}</Text>
-          </View>
+            </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="time" size={20} color="#4A90E2" />
+                <Ionicons name="time" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>{appointment.time} ({appointment.duration})</Text>
-          </View>
+              </View>
 
           {timeUntilAppointment !== null && (
             <View style={styles.infoRow}>
               <Ionicons name="hourglass" size={20} color="#fd7e14" />
               <Text style={styles.infoText}>{formatTimeUntilAppointment()}</Text>
-            </View>
+              </View>
           )}
           
           <View style={styles.infoRow}>
             <Ionicons name="call" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>{appointment.contactInfo.phone}</Text>
-          </View>
-          
+            </View>
+
           <View style={styles.infoRow}>
             <Ionicons name="mail" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>{appointment.contactInfo.email}</Text>
-          </View>
-        </View>
+              </View>
+            </View>
 
         {/* Notes Card */}
         {appointment.notes && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Notes</Text>
             <Text style={styles.notesText}>{appointment.notes}</Text>
-          </View>
+              </View>
         )}
 
         {/* Symptoms Card */}
@@ -622,12 +727,12 @@ const AppointmentDetailsScreen = () => {
               <View key={index} style={styles.symptomItem}>
                 <Ionicons name="medical" size={16} color="#dc3545" />
                 <Text style={styles.symptomText}>{symptom}</Text>
-              </View>
+            </View>
             ))}
           </View>
         )}
 
-        {/* Action Buttons */}
+      {/* Action Buttons */}
         <View style={styles.actionsCard}>
           {appointment.status === 'pending' && (
             <>
@@ -637,23 +742,23 @@ const AppointmentDetailsScreen = () => {
               >
                 <Ionicons name="checkmark-circle" size={24} color="#ffffff" />
                 <Text style={styles.primaryButtonText}>Accept Appointment</Text>
-              </TouchableOpacity>
-
+          </TouchableOpacity>
+          
               <TouchableOpacity 
                 style={styles.secondaryButton}
                 onPress={handleRescheduleAppointment}
               >
                 <Ionicons name="calendar" size={24} color="#4A90E2" />
                 <Text style={styles.secondaryButtonText}>Reschedule Appointment</Text>
-              </TouchableOpacity>
-
+          </TouchableOpacity>
+          
               <TouchableOpacity 
                 style={styles.rejectButton}
                 onPress={handleRejectAppointment}
               >
                 <Ionicons name="close-circle" size={24} color="#ffffff" />
                 <Text style={styles.rejectButtonText}>Reject Appointment</Text>
-              </TouchableOpacity>
+          </TouchableOpacity>
             </>
           )}
 
@@ -721,8 +826,8 @@ const AppointmentDetailsScreen = () => {
               <Ionicons name="close-circle" size={48} color="#dc3545" />
               <Text style={styles.cancelledTitle}>Appointment Cancelled</Text>
               <Text style={styles.cancelledSubtitle}>This appointment has been cancelled and removed from the queue.</Text>
-            </View>
-          )}
+        </View>
+      )}
 
           {appointment.status === 'completed' && (
             <View style={styles.completedMessage}>
@@ -761,20 +866,20 @@ const AppointmentDetailsScreen = () => {
 
             <Text style={styles.modalSectionTitle}>Select New Time</Text>
             <View style={styles.timeSlotsGrid}>
-              {timeSlots.map((timeSlot) => (
+              {getAvailableTimeSlots().map((timeSlot) => (
                 <TouchableOpacity
-                  key={timeSlot}
+                  key={timeSlot.time24}
                   style={[
                     styles.timeSlotButton,
-                    selectedTime === timeSlot && styles.selectedTimeSlotButton
+                    selectedTime === timeSlot.time12 && styles.selectedTimeSlotButton
                   ]}
-                  onPress={() => setSelectedTime(timeSlot)}
+                  onPress={() => setSelectedTime(timeSlot.time12)}
                 >
                   <Text style={[
                     styles.timeSlotButtonText,
-                    selectedTime === timeSlot && styles.selectedTimeSlotButtonText
+                    selectedTime === timeSlot.time12 && styles.selectedTimeSlotButtonText
                   ]}>
-                    {timeSlot}
+                    {timeSlot.time12}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -799,6 +904,75 @@ const AppointmentDetailsScreen = () => {
                 <Text style={styles.selectedSummaryText}>
                   {selectedDate} at {selectedTime}
                 </Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Call Options Modal */}
+      <Modal
+        visible={showCallOptionsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCallOptionsModal(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {selectedCallType === 'video' ? 'Video Call Options' : 'Voice Call Options'}
+            </Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <Text style={styles.modalSectionTitle}>Choose how to call {appointment?.patient}</Text>
+            
+            {callOptions.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={styles.callOptionItem}
+                onPress={() => handleCallOptionSelect(option)}
+              >
+                <View style={[styles.callOptionIcon, { backgroundColor: option.color }]}>
+                  <Ionicons name={option.icon} size={24} color="#ffffff" />
+                </View>
+                
+                <View style={styles.callOptionContent}>
+                  <Text style={styles.callOptionName}>{option.name}</Text>
+                  <Text style={styles.callOptionDescription}>{option.description}</Text>
+                </View>
+                
+                <Ionicons name="chevron-forward" size={20} color="#ADB5BD" />
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.callInfoCard}>
+              <Ionicons name="information-circle" size={24} color="#4A90E2" />
+              <View style={styles.callInfoContent}>
+                <Text style={styles.callInfoTitle}>Call Recording</Text>
+                <Text style={styles.callInfoText}>
+                  {selectedCallType === 'video' ? 'Video calls' : 'Voice calls'} are not recorded for privacy and security. 
+                  All calls are encrypted and secure.
+                </Text>
+              </View>
+            </View>
+
+            {appointment?.contactInfo && (
+              <View style={styles.contactInfoCard}>
+                <Text style={styles.contactInfoTitle}>Patient Contact Information</Text>
+                {appointment.contactInfo.phone && (
+                  <Text style={styles.contactInfoText}>
+                    📞 {appointment.contactInfo.phone}
+                  </Text>
+                )}
+                {appointment.contactInfo.email && (
+                  <Text style={styles.contactInfoText}>
+                    ✉️ {appointment.contactInfo.email}
+                  </Text>
+                )}
               </View>
             )}
           </ScrollView>
@@ -1213,6 +1387,81 @@ const styles = StyleSheet.create({
   },
   disabledDayText: {
     color: '#ADB5BD',
+  },
+  callOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  callOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  callOptionContent: {
+    flex: 1,
+  },
+  callOptionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  callOptionDescription: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  callInfoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  callInfoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  callInfoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  callInfoText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  contactInfoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  contactInfoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  contactInfoText: {
+    fontSize: 16,
+    color: '#7F8C8D',
   },
 });
 

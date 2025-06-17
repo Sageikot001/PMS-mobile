@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,47 +9,9 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; // For avatar placeholder
-import { useRoute, useNavigation } from '@react-navigation/native';
-
-// Mock data for appointments - synced with AppointmentsScreen
-const mockAppointments = {
-  // Today's appointments (using current date)
-  [new Date().toISOString().split('T')[0]]: [
-    { 
-      id: 'app1', 
-      time: '09:00 AM', 
-      patient: 'Judith Scoft', 
-      patientId: 'p1',
-      type: 'Follow-up', 
-      duration: '30 mins',
-      reason: 'Hypertension check-up',
-      nature: 'In-Person',
-      status: 'Pending'
-    },
-    { 
-      id: 'app2', 
-      time: '10:00 AM', 
-      patient: 'Samuel Cole', 
-      patientId: 'p2',
-      type: 'New Patient', 
-      duration: '45 mins',
-      reason: 'Back pain consultation',
-      nature: 'Video Call',
-      status: 'Pending'
-    },
-    { 
-      id: 'app15', 
-      time: '02:00 PM', 
-      patient: 'Emma Thompson', 
-      patientId: 'p3',
-      type: 'Video Call', 
-      duration: '30 mins',
-      reason: 'Follow-up on medication',
-      nature: 'Video Call',
-      status: 'Pending'
-    },
-  ],
-};
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
+import notificationService from '../../services/NotificationService';
+import { getTodaysAppointments } from '../../data/appointmentsData';
 
 // Mock data for recent patients - patients who recently had appointments
 const mockRecentPatients = [
@@ -62,18 +24,65 @@ const mockRecentPatients = [
 const DoctorHomeScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  // const { professional } = route.params; // Assuming professional data is passed via route
-
-  // Fallback to a default professional object if not passed or for testing
-  const professional = route.params?.professional || {
+  
+  // Mock doctor profile data (in a real app, this would come from user context/API)
+  const doctorProfile = {
+    id: 'doc_001',
     firstName: 'John',
     lastName: 'Smith',
-    // Add other necessary professional fields if needed for the UI
+    specialization: 'Internal Medicine',
+    email: 'dr.johnsmith@hospital.com',
+    phone: '+1 (555) 123-4567',
+    licenseNumber: 'MD123456',
+    experience: '15 years',
+    avatar: null, // URL to profile image
+    hospital: 'City General Hospital',
+    department: 'Internal Medicine',
+    rating: 4.8,
+    totalPatients: 1250,
+    completedAppointments: 3420
   };
 
-  // Get today's appointments
-  const todaysDate = new Date().toISOString().split('T')[0];
-  const todaysAppointments = mockAppointments[todaysDate] || [];
+  // Get today's appointments from shared data
+  const todaysAppointments = getTodaysAppointments();
+
+  // Initialize notification service and schedule reminders when screen loads
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      try {
+        // Initialize notification service
+        await notificationService.initialize();
+        
+        // Schedule reminders for today's appointments
+        if (todaysAppointments.length > 0) {
+          console.log('Scheduling reminders for today\'s appointments');
+          notificationService.scheduleAllTodaysReminders(todaysAppointments);
+        }
+        
+        // Clean up old notifications
+        notificationService.cleanupExpiredNotifications();
+      } catch (error) {
+        console.error('Error initializing notifications:', error);
+      }
+    };
+
+    initializeNotifications();
+  }, []);
+
+  // Re-schedule notifications when the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (todaysAppointments.length > 0) {
+        console.log('Re-checking appointment reminders');
+        notificationService.scheduleAllTodaysReminders(todaysAppointments);
+      }
+    }, [todaysAppointments])
+  );
+
+  // Handle profile navigation
+  const handleProfilePress = () => {
+    navigation.navigate('ProfileScreen', { doctorProfile });
+  };
 
   const renderAppointmentCard = ({ item }) => (
     <TouchableOpacity 
@@ -86,14 +95,14 @@ const DoctorHomeScreen = () => {
       <Text style={styles.appointmentTime}>{item.time}</Text>
       <View style={styles.appointmentDetails}>
         <Text style={styles.appointmentPatientName}>{item.patient}</Text>
-        <Text style={styles.appointmentType}>{item.nature} • {item.reason}</Text>
+        <Text style={styles.appointmentType}>{item.type} • {item.duration}</Text>
       </View>
       <View style={styles.appointmentActions}>
         <View style={[styles.statusIndicator, 
-          item.status === 'Accepted' ? styles.acceptedStatus : 
-          item.status === 'Rejected' ? styles.rejectedStatus : styles.pendingStatus
+          item.status === 'accepted' ? styles.acceptedStatus : 
+          item.status === 'cancelled' ? styles.rejectedStatus : styles.pendingStatus
         ]}>
-          <Text style={styles.statusText}>{item.status}</Text>
+          <Text style={styles.statusText}>{item.status || 'Pending'}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -120,14 +129,29 @@ const DoctorHomeScreen = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity 
+            style={styles.headerLeft}
+            onPress={handleProfilePress}
+          >
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person-circle-outline" size={50} color="#7F8C8D" />
+              {doctorProfile.avatar ? (
+                <Image 
+                  source={{ uri: doctorProfile.avatar }} 
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person-circle-outline" size={50} color="#4A90E2" />
+              )}
             </View>
-            <Text style={styles.doctorName}>
-              Dr. {professional.firstName} {professional.lastName}
-            </Text>
-          </View>
+            <View style={styles.doctorInfo}>
+              <Text style={styles.doctorName}>
+                Dr. {doctorProfile.firstName} {doctorProfile.lastName}
+              </Text>
+              <Text style={styles.doctorSpecialization}>
+                {doctorProfile.specialization}
+              </Text>
+            </View>
+          </TouchableOpacity>
           <View style={styles.headerRight}>
             <TouchableOpacity 
               style={styles.notificationButton}
@@ -220,10 +244,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  doctorInfo: {
+    flexDirection: 'column',
+  },
   doctorName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2C3E50',
+  },
+  doctorSpecialization: {
+    fontSize: 14,
+    color: '#7F8C8D',
   },
   headerRight: {
     flexDirection: 'row',

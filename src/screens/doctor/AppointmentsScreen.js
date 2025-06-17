@@ -14,73 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import notificationService from '../../services/NotificationService';
+import { mockAppointments } from '../../data/appointmentsData';
 
 const { height: screenHeight } = Dimensions.get('window');
-
-// Mock data for appointments - replace/expand later
-const mockAppointments = {
-  // Today's appointments
-  '2025-06-15': [
-    { time: '09:00 AM', patient: 'Judith Scoft', type: 'Follow-up', duration: '30 mins', id:'app1' },
-    { time: '10:00 AM', patient: 'Samuel Cole', type: 'New Patient', duration: '45 mins', id:'app2' },
-    { time: '02:00 PM', patient: 'Emma Thompson', type: 'Video Call', duration: '30 mins', id:'app15' },
-  ],
-  // Tomorrow's appointments
-  '2025-06-16': [
-    { time: '08:30 AM', patient: 'Rose Nguyen', type: 'Check-up', duration: '30 mins', id:'app3' },
-    { time: '10:00 AM', patient: 'Megan Reed', type: 'In-Person', duration: '45 mins', id:'app4' },
-    { time: '11:30 AM', patient: 'Alex Parker', type: 'Follow-up', duration: '30 mins', id:'app16' },
-    { time: '02:00 PM', patient: 'Sarah Johnson', type: 'Video Call', duration: '30 mins', id:'app17' },
-    { time: '03:30 PM', patient: 'Michael Chen', type: 'Chat', duration: '15 mins', id:'app18' },
-  ],
-  // Day after tomorrow
-  '2025-06-17': [
-    { time: '09:00 AM', patient: 'David Wilson', type: 'New Patient', duration: '60 mins', id:'app19' },
-    { time: '11:00 AM', patient: 'Lisa Brown', type: 'Check-up', duration: '30 mins', id:'app20' },
-    { time: '01:00 PM', patient: 'Tom Anderson', type: 'In-Person', duration: '45 mins', id:'app21' },
-  ],
-  // Next week - Monday
-  '2025-06-20': [
-    { time: '08:00 AM', patient: 'Jennifer Davis', type: 'Video Call', duration: '30 mins', id:'app22' },
-    { time: '09:30 AM', patient: 'Robert Taylor', type: 'Follow-up', duration: '30 mins', id:'app23' },
-    { time: '11:00 AM', patient: 'Emily White', type: 'Check-up', duration: '30 mins', id:'app24' },
-    { time: '02:30 PM', patient: 'James Miller', type: 'In-Person', duration: '45 mins', id:'app25' },
-  ],
-  // Next week - Tuesday
-  '2025-06-21': [
-    { time: '08:00 AM', patient: 'Kyle Carson', type: 'Video Call', duration: '30 mins', id:'app5' },
-    { time: '10:00 AM', patient: 'Anna Martinez', type: 'New Patient', duration: '60 mins', id:'app26' },
-    { time: '11:00 AM', patient: 'Chat Follow-up', type: 'Chat', duration: '15 mins', id:'app6' },
-    { time: '01:30 PM', patient: 'Carlos Rodriguez', type: 'Check-up', duration: '30 mins', id:'app27' },
-    { time: '03:00 PM', patient: 'Patricia Garcia', type: 'Follow-up', duration: '30 mins', id:'app28' },
-  ],
-  // Next week - Wednesday
-  '2025-06-22': [
-    { time: '09:00 AM', patient: 'Christopher Lee', type: 'In-Person', duration: '45 mins', id:'app29' },
-    { time: '11:00 AM', patient: 'Amanda Clark', type: 'Video Call', duration: '30 mins', id:'app30' },
-    { time: '02:00 PM', patient: 'Daniel Lewis', type: 'Check-up', duration: '30 mins', id:'app31' },
-  ],
-  // Next week - Friday
-  '2025-06-24': [
-    { time: '08:30 AM', patient: 'Nicole Walker', type: 'Follow-up', duration: '30 mins', id:'app32' },
-    { time: '10:00 AM', patient: 'Brian Hall', type: 'New Patient', duration: '60 mins', id:'app33' },
-    { time: '01:00 PM', patient: 'Rachel Allen', type: 'Video Call', duration: '30 mins', id:'app34' },
-    { time: '02:30 PM', patient: 'Kevin Young', type: 'In-Person', duration: '45 mins', id:'app35' },
-    { time: '04:00 PM', patient: 'Stephanie King', type: 'Chat', duration: '15 mins', id:'app36' },
-  ],
-  // Next weekend - Saturday
-  '2025-06-25': [
-    { time: '10:00 AM', patient: 'Mark Wright', type: 'Emergency Consultation', duration: '30 mins', id:'app37' },
-    { time: '11:30 AM', patient: 'Laura Scott', type: 'Video Call', duration: '30 mins', id:'app38' },
-  ],
-  // Following week - Monday
-  '2025-06-27': [
-    { time: '09:00 AM', patient: 'Paul Green', type: 'Check-up', duration: '30 mins', id:'app39' },
-    { time: '10:30 AM', patient: 'Michelle Adams', type: 'Follow-up', duration: '30 mins', id:'app40' },
-    { time: '02:00 PM', patient: 'Steven Baker', type: 'New Patient', duration: '60 mins', id:'app41' },
-    { time: '03:30 PM', patient: 'Kimberly Nelson', type: 'In-Person', duration: '45 mins', id:'app42' },
-  ],
-};
 
 // Simple custom calendar component
 const SimpleCalendar = ({ selectedDate, onDatePress, markedDates = {} }) => {
@@ -228,6 +164,9 @@ const DoctorAppointmentsScreen = () => {
         return;
       }
 
+      // Get today's date
+      const today = new Date().toISOString().split('T')[0];
+      
       // Convert mock appointments to the format expected by notification service
       Object.entries(mockAppointments).forEach(([dateStr, appointments]) => {
         // Validate dateStr
@@ -236,44 +175,88 @@ const DoctorAppointmentsScreen = () => {
           return;
         }
 
-        appointments.forEach(appointment => {
-          // Validate appointment data
-          if (!appointment || !appointment.id || !appointment.time || !appointment.patient) {
-            console.warn('Invalid appointment data:', appointment);
-            return;
-          }
+        // Only schedule notifications for today and future dates
+        if (dateStr >= today) {
+          const appointmentsForDate = appointments.map(appointment => {
+            // Validate appointment data
+            if (!appointment || !appointment.id || !appointment.time || !appointment.patient) {
+              console.warn('Invalid appointment data:', appointment);
+              return null;
+            }
 
-          const appointmentData = {
-            id: appointment.id,
-            date: dateStr,
-            time: appointment.time,
-            patient: appointment.patient,
-            type: appointment.type || 'Appointment',
-            duration: appointment.duration || '30 mins'
-          };
-          
-          // Schedule multiple reminders (30 min, 15 min, 5 min before)
-          try {
-            notificationService.scheduleAppointmentReminder(appointmentData, 30);
-            notificationService.scheduleAppointmentReminder(appointmentData, 15);
-            notificationService.scheduleAppointmentReminder(appointmentData, 5);
-          } catch (reminderError) {
-            console.error('Error scheduling reminder for appointment:', appointmentData.id, reminderError);
+            return {
+              id: appointment.id,
+              date: dateStr,
+              time: appointment.time,
+              patient: appointment.patient,
+              type: appointment.type || 'Appointment',
+              duration: appointment.duration || '30 mins'
+            };
+          }).filter(Boolean); // Remove null entries
+
+          // Schedule all appointments for this date using the enhanced method
+          if (appointmentsForDate.length > 0) {
+            // For today's appointments, use the specialized method
+            if (dateStr === today) {
+              notificationService.scheduleAllTodaysReminders(appointmentsForDate);
+            } else {
+              // For future appointments, schedule individual reminders
+              appointmentsForDate.forEach(appointmentData => {
+                try {
+                  notificationService.scheduleAppointmentReminder(appointmentData, 30);
+                  notificationService.scheduleAppointmentReminder(appointmentData, 15);
+                  notificationService.scheduleAppointmentReminder(appointmentData, 5);
+                } catch (reminderError) {
+                  console.error('Error scheduling reminder for appointment:', appointmentData.id, reminderError);
+                }
+              });
+            }
           }
-        });
+        }
       });
+
+      // Clean up old notifications
+      notificationService.cleanupExpiredNotifications();
+      
+      console.log('All appointment notifications scheduled successfully');
     } catch (error) {
       console.error('Error in scheduleAppointmentNotifications:', error);
     }
   };
 
   // Available time slots for setting availability
-  const timeSlots = [
-    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM',
-    '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
-    '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM',
-    '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM'
-  ];
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const time24 = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const period = hour < 12 ? 'AM' : 'PM';
+        const time12 = `${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${period}`;
+        
+        slots.push({
+          time24,
+          time12,
+          hour,
+          minute,
+          isBusinessHours: hour >= 8 && hour < 18, // Default business hours 8 AM - 6 PM
+        });
+      }
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  // Doctor's availability settings (in a real app, this would come from backend)
+  const [doctorAvailability, setDoctorAvailability] = useState({
+    // Default availability - business hours only
+    enabledHours: Array.from({length: 10}, (_, i) => i + 8), // 8 AM to 5 PM
+    disabledSlots: [], // Specific time slots that are unavailable
+    customAvailableSlots: [], // Custom slots outside business hours
+  });
+
+  const [showAvailabilitySettings, setShowAvailabilitySettings] = useState(false);
 
   // Memoize appointments for selected date
   const selectedDateAppointments = useMemo(() => {
@@ -438,6 +421,65 @@ const DoctorAppointmentsScreen = () => {
     });
   };
 
+  // Check if a time slot is available for selection
+  const isTimeSlotAvailable = (timeSlot) => {
+    const { hour } = timeSlot;
+    const timeKey = timeSlot.time24;
+    
+    // Check if hour is enabled
+    if (!doctorAvailability.enabledHours.includes(hour)) {
+      // Check if this specific slot is in custom available slots
+      return doctorAvailability.customAvailableSlots.includes(timeKey);
+    }
+    
+    // Check if this specific slot is disabled
+    return !doctorAvailability.disabledSlots.includes(timeKey);
+  };
+
+  // Get filtered available time slots
+  const getAvailableTimeSlots = () => {
+    return timeSlots.filter(isTimeSlotAvailable);
+  };
+
+  // Toggle hour availability
+  const toggleHourAvailability = (hour) => {
+    setDoctorAvailability(prev => ({
+      ...prev,
+      enabledHours: prev.enabledHours.includes(hour)
+        ? prev.enabledHours.filter(h => h !== hour)
+        : [...prev.enabledHours, hour].sort((a, b) => a - b)
+    }));
+  };
+
+  // Toggle specific time slot
+  const toggleSpecificTimeSlot = (timeKey, hour) => {
+    setDoctorAvailability(prev => {
+      const isHourEnabled = prev.enabledHours.includes(hour);
+      
+      if (isHourEnabled) {
+        // If hour is enabled, add to disabled slots
+        return {
+          ...prev,
+          disabledSlots: prev.disabledSlots.includes(timeKey)
+            ? prev.disabledSlots.filter(slot => slot !== timeKey)
+            : [...prev.disabledSlots, timeKey]
+        };
+      } else {
+        // If hour is disabled, add to custom available slots
+        return {
+          ...prev,
+          customAvailableSlots: prev.customAvailableSlots.includes(timeKey)
+            ? prev.customAvailableSlots.filter(slot => slot !== timeKey)
+            : [...prev.customAvailableSlots, timeKey]
+        };
+      }
+    });
+  };
+
+  const handleOpenAvailabilitySettings = () => {
+    setShowAvailabilitySettings(true);
+  };
+
   const handleSaveAvailability = () => {
     if (!availabilityDate || selectedTimeSlots.length === 0) {
       Alert.alert('Error', 'Please select a date and at least one time slot.');
@@ -469,6 +511,9 @@ const DoctorAppointmentsScreen = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Appointments</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.settingsButton} onPress={handleOpenAvailabilitySettings}>
+            <Ionicons name="settings" size={24} color="#4A90E2" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.messageButton} onPress={handleOpenMessages}>
             <Ionicons name="chatbubbles" size={24} color="#4A90E2" />
           </TouchableOpacity>
@@ -568,23 +613,33 @@ const DoctorAppointmentsScreen = () => {
             <Text style={styles.modalSubtitle}>Tap to select/deselect time slots when you're available</Text>
             
             <View style={styles.timeSlotsGrid}>
-              {timeSlots.map((timeSlot) => (
-                <TouchableOpacity
-                  key={timeSlot}
-                  style={[
-                    styles.timeSlotButton,
-                    selectedTimeSlots.includes(timeSlot) && styles.selectedTimeSlotButton
-                  ]}
-                  onPress={() => handleTimeSlotToggle(timeSlot)}
-                >
-                  <Text style={[
-                    styles.timeSlotButtonText,
-                    selectedTimeSlots.includes(timeSlot) && styles.selectedTimeSlotButtonText
-                  ]}>
-                    {timeSlot}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {getAvailableTimeSlots().map((timeSlot) => {
+                const isSelected = selectedTimeSlots.includes(timeSlot.time24);
+                const isBusinessHours = timeSlot.isBusinessHours;
+                
+                return (
+                  <TouchableOpacity
+                    key={timeSlot.time24}
+                    style={[
+                      styles.timeSlotButton,
+                      isSelected && styles.selectedTimeSlotButton,
+                      !isBusinessHours && styles.afterHoursSlotButton,
+                    ]}
+                    onPress={() => handleTimeSlotToggle(timeSlot.time24)}
+                  >
+                    <Text style={[
+                      styles.timeSlotButtonText,
+                      isSelected && styles.selectedTimeSlotButtonText,
+                      !isBusinessHours && styles.afterHoursSlotText,
+                    ]}>
+                      {timeSlot.time12}
+                    </Text>
+                    {!isBusinessHours && (
+                      <Text style={styles.afterHoursLabel}>After Hours</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {selectedTimeSlots.length > 0 && (
@@ -597,6 +652,133 @@ const DoctorAppointmentsScreen = () => {
                 </Text>
               </View>
             )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Availability Settings Modal */}
+      <Modal
+        visible={showAvailabilitySettings}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowAvailabilitySettings(false)}>
+              <Text style={styles.modalCancelText}>Done</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Availability Settings</Text>
+            <TouchableOpacity onPress={() => {
+              // Reset to default business hours
+              setDoctorAvailability({
+                enabledHours: Array.from({length: 10}, (_, i) => i + 8),
+                disabledSlots: [],
+                customAvailableSlots: [],
+              });
+            }}>
+              <Text style={styles.modalSaveText}>Reset</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <Text style={styles.modalSectionTitle}>Working Hours</Text>
+            <Text style={styles.modalSubtitle}>Enable/disable entire hours. Green = enabled, Gray = disabled</Text>
+            
+            <View style={styles.hoursGrid}>
+              {Array.from({length: 24}, (_, hour) => {
+                const isEnabled = doctorAvailability.enabledHours.includes(hour);
+                const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                const period = hour < 12 ? 'AM' : 'PM';
+                const timeLabel = `${hour12} ${period}`;
+                
+                return (
+                  <TouchableOpacity
+                    key={hour}
+                    style={[
+                      styles.hourButton,
+                      isEnabled && styles.enabledHourButton,
+                    ]}
+                    onPress={() => toggleHourAvailability(hour)}
+                  >
+                    <Text style={[
+                      styles.hourButtonText,
+                      isEnabled && styles.enabledHourButtonText,
+                    ]}>
+                      {timeLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.modalSectionTitle}>Fine-tune Time Slots</Text>
+            <Text style={styles.modalSubtitle}>
+              Customize specific 30-minute slots. For enabled hours: tap to disable specific slots. 
+              For disabled hours: tap to enable specific slots.
+            </Text>
+            
+            <View style={styles.timeSlotsList}>
+              {timeSlots.map((timeSlot) => {
+                const { hour, time24, time12 } = timeSlot;
+                const isHourEnabled = doctorAvailability.enabledHours.includes(hour);
+                const isSlotDisabled = doctorAvailability.disabledSlots.includes(time24);
+                const isSlotCustomEnabled = doctorAvailability.customAvailableSlots.includes(time24);
+                
+                let slotStatus = 'unavailable';
+                let statusColor = '#ADB5BD';
+                let statusText = 'Unavailable';
+                
+                if (isHourEnabled && !isSlotDisabled) {
+                  slotStatus = 'available';
+                  statusColor = '#28a745';
+                  statusText = 'Available';
+                } else if (!isHourEnabled && isSlotCustomEnabled) {
+                  slotStatus = 'custom';
+                  statusColor = '#4A90E2';
+                  statusText = 'Custom Available';
+                } else if (isHourEnabled && isSlotDisabled) {
+                  slotStatus = 'disabled';
+                  statusColor = '#dc3545';
+                  statusText = 'Disabled';
+                }
+                
+                return (
+                  <TouchableOpacity
+                    key={time24}
+                    style={[styles.timeSlotRow, { borderLeftColor: statusColor }]}
+                    onPress={() => toggleSpecificTimeSlot(time24, hour)}
+                  >
+                    <View style={styles.timeSlotInfo}>
+                      <Text style={styles.timeSlotTime}>{time12}</Text>
+                      <Text style={[styles.timeSlotStatus, { color: statusColor }]}>
+                        {statusText}
+                      </Text>
+                    </View>
+                    <Ionicons 
+                      name={slotStatus === 'available' || slotStatus === 'custom' ? "checkmark-circle" : "close-circle"} 
+                      size={24} 
+                      color={statusColor} 
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.availabilitySummary}>
+              <Text style={styles.summaryTitle}>Summary</Text>
+              <Text style={styles.summaryText}>
+                Enabled Hours: {doctorAvailability.enabledHours.length}/24
+              </Text>
+              <Text style={styles.summaryText}>
+                Disabled Slots: {doctorAvailability.disabledSlots.length}
+              </Text>
+              <Text style={styles.summaryText}>
+                Custom Available Slots: {doctorAvailability.customAvailableSlots.length}
+              </Text>
+              <Text style={styles.summaryText}>
+                Total Available Slots: {getAvailableTimeSlots().length}
+              </Text>
+            </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -627,6 +809,10 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  settingsButton: {
+    padding: 8,
+    marginRight: 8,
   },
   messageButton: {
     padding: 8,
@@ -952,6 +1138,87 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginBottom: 4,
   },
+  afterHoursSlotButton: {
+    backgroundColor: '#E9ECEF',
+    borderColor: '#E9ECEF',
+  },
+  afterHoursSlotText: {
+    color: '#7F8C8D',
+  },
+  afterHoursLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    fontWeight: '500',
+  },
+  hoursGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  hourButton: {
+    width: '30%',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  enabledHourButton: {
+    backgroundColor: '#28a745',
+    borderColor: '#28a745',
+  },
+  hourButtonText: {
+    fontSize: 14,
+    color: '#2C3E50',
+  },
+  enabledHourButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  timeSlotsList: {
+    flex: 1,
+  },
+  timeSlotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E9ECEF',
+  },
+  timeSlotInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeSlotTime: {
+    fontSize: 14,
+    color: '#2C3E50',
+  },
+  timeSlotStatus: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  availabilitySummary: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4A90E2',
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 5,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
 });
 
-export default DoctorAppointmentsScreen; 
+export default DoctorAppointmentsScreen;

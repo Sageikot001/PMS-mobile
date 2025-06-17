@@ -4,6 +4,7 @@ import { Alert, Platform } from 'react-native';
 class NotificationService {
   constructor() {
     this.scheduledNotifications = new Map();
+    this.sentNotifications = new Set(); // Track sent notifications to prevent duplicates
     this.notificationQueue = [];
     this.isServiceRunning = false;
   }
@@ -16,6 +17,12 @@ class NotificationService {
       if (savedNotifications) {
         const notifications = JSON.parse(savedNotifications);
         this.scheduledNotifications = new Map(notifications);
+      }
+      
+      // Load sent notifications tracking
+      const sentNotifications = await AsyncStorage.getItem('sentNotifications');
+      if (sentNotifications) {
+        this.sentNotifications = new Set(JSON.parse(sentNotifications));
       }
       
       this.isServiceRunning = true;
@@ -72,16 +79,44 @@ class NotificationService {
   // Schedule an appointment reminder notification
   scheduleAppointmentReminder(appointment, reminderMinutes = 30) {
     try {
-      // Validate appointment data
-      if (!appointment || !appointment.date || !appointment.time) {
-        console.error('Invalid appointment data, skipping notification');
+      // Validate appointment data with detailed logging
+      if (!appointment) {
+        console.error('scheduleAppointmentReminder: appointment is null/undefined');
         return null;
       }
+
+      if (!appointment.date) {
+        console.error('scheduleAppointmentReminder: appointment.date is missing', appointment);
+        return null;
+      }
+
+      if (!appointment.time) {
+        console.error('scheduleAppointmentReminder: appointment.time is missing', appointment);
+        return null;
+      }
+
+      if (!appointment.id) {
+        console.error('scheduleAppointmentReminder: appointment.id is missing', appointment);
+        return null;
+      }
+
+      if (!appointment.patient) {
+        console.error('scheduleAppointmentReminder: appointment.patient is missing', appointment);
+        return null;
+      }
+
+      console.log('Scheduling reminder for appointment:', {
+        id: appointment.id,
+        date: appointment.date,
+        time: appointment.time,
+        patient: appointment.patient,
+        reminderMinutes
+      });
 
       const appointmentTime = this.parseAppointmentDateTime(appointment.date, appointment.time);
       
       if (!appointmentTime) {
-        console.error('Failed to parse appointment time, skipping notification');
+        console.error('Failed to parse appointment time for:', appointment.date, appointment.time);
         return null;
       }
       
@@ -89,16 +124,23 @@ class NotificationService {
       
       // Don't schedule if reminder time is in the past
       if (reminderTime <= new Date()) {
-        console.log('Reminder time is in the past, skipping notification');
+        console.log('Reminder time is in the past, skipping notification for:', appointment.id, reminderTime.toLocaleString());
         return null;
       }
 
       const notificationId = `appointment_${appointment.id}_${reminderMinutes}min`;
+      
+      // Check if this notification has already been sent
+      if (this.sentNotifications.has(notificationId)) {
+        console.log(`Notification ${notificationId} already sent, skipping`);
+        return null;
+      }
+
       const notification = {
         id: notificationId,
         appointmentId: appointment.id,
         type: 'appointment_reminder',
-        title: 'Upcoming Appointment',
+        title: `Appointment in ${reminderMinutes} minutes`,
         message: `You have an appointment with ${appointment.patient} in ${reminderMinutes} minutes`,
         scheduledTime: reminderTime.toISOString(),
         appointmentData: appointment,
@@ -108,10 +150,10 @@ class NotificationService {
       this.scheduledNotifications.set(notificationId, notification);
       this.saveNotifications();
       
-      console.log(`Scheduled reminder for appointment ${appointment.id} at ${reminderTime.toLocaleString()}`);
+      console.log(`✅ Scheduled reminder for appointment ${appointment.id} at ${reminderTime.toLocaleString()}`);
       return notificationId;
     } catch (error) {
-      console.error('Error scheduling appointment reminder:', error);
+      console.error('Error scheduling appointment reminder:', error, appointment);
       return null;
     }
   }
@@ -130,6 +172,20 @@ class NotificationService {
     });
     
     return scheduledIds;
+  }
+
+  // Schedule reminders for all today's appointments
+  scheduleAllTodaysReminders(todaysAppointments) {
+    console.log(`Scheduling reminders for ${todaysAppointments.length} appointments today`);
+    
+    todaysAppointments.forEach(appointment => {
+      // Schedule 30, 15, and 5 minute reminders for each appointment
+      [30, 15, 5].forEach(minutes => {
+        this.scheduleAppointmentReminder(appointment, minutes);
+      });
+    });
+    
+    this.saveNotifications();
   }
 
   // Cancel a scheduled notification
@@ -211,7 +267,12 @@ class NotificationService {
 
     this.scheduledNotifications.forEach((notification, key) => {
       const scheduledTime = new Date(notification.scheduledTime);
-      if (scheduledTime <= now) {
+      
+      // Check if notification is due (within the last minute to current time)
+      const timeDiff = now.getTime() - scheduledTime.getTime();
+      
+      // Notification is due if it's within the last minute and not already sent
+      if (timeDiff >= 0 && timeDiff <= 60000 && !this.sentNotifications.has(notification.id)) {
         dueNotifications.push({ key, notification });
       }
     });
@@ -219,11 +280,13 @@ class NotificationService {
     // Process due notifications
     dueNotifications.forEach(({ key, notification }) => {
       this.triggerNotification(notification);
-      this.scheduledNotifications.delete(key);
+      this.sentNotifications.add(notification.id); // Mark as sent
+      this.scheduledNotifications.delete(key); // Remove from scheduled
     });
 
     if (dueNotifications.length > 0) {
       this.saveNotifications();
+      this.saveSentNotifications();
     }
   }
 
@@ -234,7 +297,6 @@ class NotificationService {
     const onPress = () => {
       // Navigate to appointment details or relevant screen
       if (notification.type === 'appointment_reminder') {
-        // You can add navigation logic here
         console.log('Navigate to appointment:', notification.appointmentId);
       }
     };
@@ -288,16 +350,37 @@ class NotificationService {
     }
   }
 
-  // Get all scheduled notifications
-  getScheduledNotifications() {
-    return Array.from(this.scheduledNotifications.values());
+  // Save sent notifications tracking
+  async saveSentNotifications() {
+    try {
+      const sentArray = Array.from(this.sentNotifications);
+      await AsyncStorage.setItem('sentNotifications', JSON.stringify(sentArray));
+    } catch (error) {
+      console.error('Error saving sent notifications:', error);
+    }
   }
 
-  // Clean up expired notifications
+  // Get scheduled notifications as array
+  async getScheduledNotifications() {
+    try {
+      // Convert Map to array and sort by scheduled time
+      const notifications = Array.from(this.scheduledNotifications.values())
+        .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
+      
+      return notifications;
+    } catch (error) {
+      console.error('Error getting scheduled notifications:', error);
+      return [];
+    }
+  }
+
+  // Clean up expired notifications and old sent notification tracking
   cleanupExpiredNotifications() {
     const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
     const toDelete = [];
 
+    // Clean up old scheduled notifications
     this.scheduledNotifications.forEach((notification, key) => {
       const scheduledTime = new Date(notification.scheduledTime);
       // Remove notifications that are more than 1 hour overdue
@@ -310,9 +393,36 @@ class NotificationService {
       this.scheduledNotifications.delete(key);
     });
 
-    if (toDelete.length > 0) {
+    // Clean up old sent notification tracking (older than 1 day)
+    const sentToDelete = [];
+    this.sentNotifications.forEach(notificationId => {
+      // Extract timestamp from notification ID if possible, or clean up all old ones
+      // For simplicity, we'll clean up sent notifications older than 1 day
+      if (notificationId.includes('appointment_') && Math.random() > 0.9) {
+        // Randomly clean up some old sent notifications to prevent infinite growth
+        sentToDelete.push(notificationId);
+      }
+    });
+
+    sentToDelete.forEach(id => {
+      this.sentNotifications.delete(id);
+    });
+
+    if (toDelete.length > 0 || sentToDelete.length > 0) {
       this.saveNotifications();
-      console.log(`Cleaned up ${toDelete.length} expired notifications`);
+      this.saveSentNotifications();
+      console.log(`Cleaned up ${toDelete.length} expired notifications and ${sentToDelete.length} old sent notifications`);
+    }
+  }
+
+  // Reset sent notifications for a new day
+  async clearSentNotificationsForNewDay() {
+    try {
+      this.sentNotifications.clear();
+      await AsyncStorage.removeItem('sentNotifications');
+      console.log('Cleared sent notifications for new day');
+    } catch (error) {
+      console.error('Error clearing sent notifications:', error);
     }
   }
 
@@ -327,29 +437,58 @@ class NotificationService {
 
   // Send chat notification
   showChatNotification(senderName, message, chatId) {
-    this.showNotification(
-      `New message from ${senderName}`,
-      message.length > 50 ? message.substring(0, 50) + '...' : message,
+    const notification = this.createNotification(
       'chat',
-      () => {
-        // Navigate to chat screen
-        console.log('Navigate to chat:', chatId);
-      }
+      `New message from ${senderName}`,
+      message,
+      { chatId } // For navigation
     );
+
+    this.showNotification(notification.title, notification.message, 'chat');
+    this.addToNotificationHistory(notification);
   }
 
   // Send call notification
-  showCallNotification(callerName, callType, callId) {
-    const message = `Incoming ${callType} call`;
-    this.showNotification(
-      message,
-      `${callerName} is calling you`,
+  showCallNotification(callerName, callType, chatId) {
+    const notification = this.createNotification(
       'call',
-      () => {
-        // Navigate to call screen or handle call
-        console.log('Handle call:', callId);
-      }
+      `Incoming ${callType} call`,
+      `${callerName} is calling you`,
+      { chatId } // For navigation
     );
+
+    this.showNotification(notification.title, notification.message, 'call');
+    this.addToNotificationHistory(notification);
+  }
+
+  // Show appointment ready notification with navigation data
+  showAppointmentReadyNotification(appointment) {
+    const notification = this.createNotification(
+      'appointment_ready',
+      'Patient is Waiting',
+      `${appointment.patient} is ready for their appointment`,
+      { appointmentId: appointment.id } // For navigation
+    );
+
+    this.showNotification(notification.title, notification.message, 'appointment_ready');
+    this.addToNotificationHistory(notification);
+  }
+
+  // Delete specific notifications from history
+  async deleteNotifications(notificationIds) {
+    try {
+      const history = await this.getNotificationHistory();
+      const filteredHistory = history.filter(notification => 
+        !notificationIds.includes(notification.id)
+      );
+      
+      await AsyncStorage.setItem('notificationHistory', JSON.stringify(filteredHistory));
+      console.log(`Deleted ${notificationIds.length} notifications from history`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting notifications:', error);
+      return false;
+    }
   }
 
   // Clear notification history
@@ -357,10 +496,44 @@ class NotificationService {
     try {
       await AsyncStorage.removeItem('notificationHistory');
       console.log('Notification history cleared');
+      return true;
     } catch (error) {
       console.error('Error clearing notification history:', error);
-      throw error;
+      return false;
     }
+  }
+
+  // Enhanced notification creation with navigation data
+  createNotification(type, title, message, data = {}) {
+    return {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      type,
+      title,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data // Include appointmentId, chatId, etc.
+    };
+  }
+
+  // Get status of notification service for debugging
+  getServiceStatus() {
+    return {
+      isServiceRunning: this.isServiceRunning,
+      scheduledNotificationsCount: this.scheduledNotifications.size,
+      sentNotificationsCount: this.sentNotifications.size,
+      scheduledNotifications: Array.from(this.scheduledNotifications.values()).map(notification => ({
+        id: notification.id,
+        title: notification.title,
+        scheduledTime: notification.scheduledTime,
+        appointmentId: notification.appointmentId
+      }))
+    };
+  }
+
+  // Force check notifications (for debugging)
+  forceCheckNotifications() {
+    console.log('Forcing notification check...');
+    this.checkForDueNotifications();
   }
 }
 

@@ -4,153 +4,166 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  TouchableOpacity,
   ScrollView,
-  TextInput,
-  Switch,
+  TouchableOpacity,
+  Image,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
-  const [formData, setFormData] = useState({
-    fullName: 'Dr. Sarah Johnson',
-    specialization: 'Cardiology',
-    licenseNumber: 'MD123456789',
-    isPublic: true,
-  });
+  const route = useRoute();
+  const { doctorProfile } = route.params;
 
-  const specializations = [
-    'Cardiology',
-    'Dermatology',
-    'Neurology',
-    'Pediatrics',
-    'Internal Medicine',
-    'Surgery',
-    'Psychiatry',
-    'Radiology',
+  const [profile, setProfile] = useState(doctorProfile);
+
+  const handleEditProfile = () => {
+    Alert.alert('Edit Profile', 'Profile editing functionality coming soon!');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            // In a real app, you'd clear user session and navigate to login
+            Alert.alert('Logged Out', 'You have been logged out successfully');
+          }
+        }
+      ]
+    );
+  };
+
+  const profileSections = [
+    {
+      title: 'Personal Information',
+      items: [
+        { label: 'Full Name', value: `Dr. ${profile.firstName} ${profile.lastName}`, icon: 'person' },
+        { label: 'Email', value: profile.email, icon: 'mail' },
+        { label: 'Phone', value: profile.phone, icon: 'call' },
+        { label: 'License Number', value: profile.licenseNumber, icon: 'document-text' },
+      ]
+    },
+    {
+      title: 'Professional Information',
+      items: [
+        { label: 'Specialization', value: profile.specialization, icon: 'medical' },
+        { label: 'Hospital', value: profile.hospital, icon: 'business' },
+        { label: 'Department', value: profile.department, icon: 'folder' },
+        { label: 'Experience', value: profile.experience, icon: 'time' },
+      ]
+    },
+    {
+      title: 'Statistics',
+      items: [
+        { label: 'Rating', value: `${profile.rating}/5.0`, icon: 'star' },
+        { label: 'Total Patients', value: profile.totalPatients.toLocaleString(), icon: 'people' },
+        { label: 'Completed Appointments', value: profile.completedAppointments.toLocaleString(), icon: 'checkmark-circle' },
+      ]
+    }
   ];
 
-  const [showSpecializationDropdown, setShowSpecializationDropdown] = useState(false);
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSpecializationSelect = (specialization) => {
-    handleInputChange('specialization', specialization);
-    setShowSpecializationDropdown(false);
-  };
-
-  const handleSave = () => {
-    Alert.alert('Success', 'Profile updated successfully!');
-  };
-
-  const handleUploadPhoto = () => {
-    Alert.alert('Upload Photo', 'Photo upload functionality coming soon!');
-  };
+  const renderProfileItem = (item) => (
+    <View key={item.label} style={styles.profileItem}>
+      <View style={styles.profileItemLeft}>
+        <Ionicons name={item.icon} size={20} color="#4A90E2" />
+        <Text style={styles.profileItemLabel}>{item.label}</Text>
+      </View>
+      <Text style={styles.profileItemValue}>{item.value}</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color="#2C3E50" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile Setup</Text>
-        <View style={styles.stepIndicator}>
-          <Text style={styles.stepText}>STEP 2 F 4</Text>
-        </View>
+        
+        <Text style={styles.headerTitle}>Profile</Text>
+        
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={handleEditProfile}
+        >
+          <Ionicons name="create-outline" size={24} color="#4A90E2" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Photo Section */}
-        <View style={styles.photoSection}>
-          <View style={styles.photoContainer}>
-            <Ionicons name="person-circle-outline" size={120} color="#E9ECEF" />
-          </View>
-          <TouchableOpacity style={styles.uploadButton} onPress={handleUploadPhoto}>
-            <Text style={styles.uploadButtonText}>Upload Photo</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Form Fields */}
-        <View style={styles.formSection}>
-          {/* Full Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formData.fullName}
-              onChangeText={(value) => handleInputChange('fullName', value)}
-              placeholder="Enter your full name"
-            />
-          </View>
-
-          {/* Specialization */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Specialization</Text>
-            <TouchableOpacity
-              style={styles.dropdownButton}
-              onPress={() => setShowSpecializationDropdown(!showSpecializationDropdown)}
-            >
-              <Text style={styles.dropdownButtonText}>{formData.specialization}</Text>
-              <Ionicons name="chevron-down" size={20} color="#7F8C8D" />
-            </TouchableOpacity>
-            
-            {showSpecializationDropdown && (
-              <View style={styles.dropdownMenu}>
-                {specializations.map((spec, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.dropdownItem}
-                    onPress={() => handleSpecializationSelect(spec)}
-                  >
-                    <Text style={styles.dropdownItemText}>{spec}</Text>
-                  </TouchableOpacity>
-                ))}
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            {profile.avatar ? (
+              <Image 
+                source={{ uri: profile.avatar }} 
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={60} color="#4A90E2" />
               </View>
             )}
           </View>
+          
+          <Text style={styles.profileName}>
+            Dr. {profile.firstName} {profile.lastName}
+          </Text>
+          <Text style={styles.profileSpecialization}>
+            {profile.specialization}
+          </Text>
+          <Text style={styles.profileHospital}>
+            {profile.hospital}
+          </Text>
+        </View>
 
-          {/* License Number */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>License Number</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formData.licenseNumber}
-              onChangeText={(value) => handleInputChange('licenseNumber', value)}
-              placeholder="Enter your license number"
-            />
+        {/* Profile Sections */}
+        {profileSections.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.sectionContent}>
+              {section.items.map(renderProfileItem)}
+            </View>
           </View>
+        ))}
 
-          {/* Make Profile Public */}
-          <View style={styles.switchGroup}>
-            <Text style={styles.switchLabel}>Make Profile Public</Text>
-            <Switch
-              value={formData.isPublic}
-              onValueChange={(value) => handleInputChange('isPublic', value)}
-              trackColor={{ false: '#E9ECEF', true: '#4A90E2' }}
-              thumbColor={formData.isPublic ? '#ffffff' : '#ffffff'}
-            />
-          </View>
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleEditProfile}>
+            <Ionicons name="create" size={24} color="#4A90E2" />
+            <Text style={styles.actionButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="settings" size={24} color="#4A90E2" />
+            <Text style={styles.actionButtonText}>Settings</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="help-circle" size={24} color="#4A90E2" />
+            <Text style={styles.actionButtonText}>Help & Support</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.logoutButton]} 
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out" size={24} color="#dc3545" />
+            <Text style={[styles.actionButtonText, styles.logoutText]}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.nextButton} onPress={handleSave}>
-          <Text style={styles.nextButtonText}>Next</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -163,162 +176,141 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
   },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
   headerTitle: {
+    flex: 1,
     fontSize: 20,
     fontWeight: '600',
     color: '#2C3E50',
   },
-  stepIndicator: {
-    backgroundColor: '#F8F9FA',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  stepText: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    fontWeight: '600',
-    letterSpacing: 0.5,
+  editButton: {
+    padding: 8,
   },
   content: {
     flex: 1,
+    padding: 16,
   },
-  photoSection: {
+  profileHeader: {
     alignItems: 'center',
-    paddingVertical: 40,
     backgroundColor: '#ffffff',
-    marginBottom: 20,
-  },
-  photoContainer: {
-    marginBottom: 20,
-  },
-  uploadButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  uploadButtonText: {
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '500',
-  },
-  formSection: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingVertical: 30,
-  },
-  inputGroup: {
-    marginBottom: 25,
-  },
-  inputLabel: {
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  dropdownButton: {
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dropdownButtonText: {
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  dropdownMenu: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderRadius: 8,
-    marginTop: 5,
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    maxHeight: 200,
   },
-  dropdownItem: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F3F5',
+  avatarContainer: {
+    marginBottom: 16,
   },
-  dropdownItemText: {
-    fontSize: 16,
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  avatarPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#E9ECEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#2C3E50',
+    marginBottom: 4,
   },
-  switchGroup: {
+  profileSpecialization: {
+    fontSize: 18,
+    color: '#4A90E2',
+    marginBottom: 4,
+  },
+  profileHospital: {
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  section: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 16,
+  },
+  sectionContent: {
+    gap: 12,
+  },
+  profileItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
-  switchLabel: {
+  profileItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileItemLabel: {
     fontSize: 16,
     color: '#2C3E50',
+    marginLeft: 12,
+  },
+  profileItemValue: {
+    fontSize: 16,
+    color: '#7F8C8D',
     fontWeight: '500',
   },
-  bottomActions: {
+  actionButtons: {
+    gap: 12,
+    marginBottom: 32,
+  },
+  actionButton: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
-    gap: 15,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  backButton: {
-    flex: 1,
-    backgroundColor: 'transparent',
+  actionButtonText: {
+    fontSize: 16,
+    color: '#2C3E50',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  logoutButton: {
+    borderColor: '#dc3545',
     borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#7F8C8D',
-  },
-  nextButton: {
-    flex: 1,
-    backgroundColor: '#4A90E2',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+  logoutText: {
+    color: '#dc3545',
   },
 });
 
