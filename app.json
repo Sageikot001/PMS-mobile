@@ -23,6 +23,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "PAYSTACK_PUBLIC_KEY": "pk_test_3dc9e07411801bf934aba4e41abdabb5d6d10599",
+      "FLUTTERWAVE_PUBLIC_KEY": "FLWPUBK_TEST_dummy_key",
+      "TELNYX_SIP_USER": "dev_user",
+      "TELNYX_SIP_PASSWORD": "dev_password",
+      "TELNYX_API_KEY": "dev_api_key",
+      "TELNYX_DEBUG": "true"
     }
   }
 }

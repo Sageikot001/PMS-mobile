@@ -81,7 +81,7 @@ const DoctorHomeScreen = () => {
 
   // Handle profile navigation
   const handleProfilePress = () => {
-    navigation.navigate('ProfileScreen', { doctorProfile });
+    navigation.navigate('Profile', { doctorProfile });
   };
 
   const renderAppointmentCard = ({ item }) => (

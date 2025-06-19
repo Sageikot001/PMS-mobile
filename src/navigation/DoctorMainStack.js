@@ -14,6 +14,7 @@ import ChatListScreen from '../screens/doctor/ChatListScreen';
 import ChatScreen from '../screens/doctor/ChatScreen';
 import NotificationsScreen from '../screens/doctor/NotificationsScreen';
 import AIChatScreen from '../screens/doctor/AIChatScreen';
+import TelnyxTestScreen from '../screens/TelnyxTestScreen';
 // Import other doctor-specific detail screens here as they are created
 // e.g., PrescriptionScreen, AppointmentDetailScreen
 
@@ -134,6 +135,14 @@ const DoctorMainStack = () => {
         options={{ 
           title: 'Medical AI Assistant',
           headerShown: false, // AIChatScreen has its own header
+        }} 
+      />
+      <Stack.Screen 
+        name="TelnyxTestScreen" 
+        component={TelnyxTestScreen} 
+        options={{ 
+          title: 'Telnyx Calling Test',
+          headerShown: false, // TelnyxTestScreen has its own header
         }} 
       />
       {/* Add other detail screens here */}

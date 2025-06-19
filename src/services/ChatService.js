@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notificationService from './NotificationService';
+import telnyxService from './TelnyxService';
 
 class ChatService {
   constructor() {
@@ -7,17 +8,156 @@ class ChatService {
     this.messageListeners = new Map();
     this.connectionStatus = 'disconnected';
     this.currentUserId = null;
+    this.chatListeners = [];
+    
+    // Initialize Telnyx service event listeners
+    this.setupTelnyxListeners();
+  }
+
+  setupTelnyxListeners() {
+    // Listen for Telnyx events
+    telnyxService.addEventListener('incomingCall', (call) => {
+      this.handleIncomingCall(call);
+    });
+
+    telnyxService.addEventListener('callStateChanged', ({ state, call }) => {
+      this.handleCallStateChanged(state, call);
+    });
+
+    telnyxService.addEventListener('connected', () => {
+      console.log('ChatService: Telnyx connected');
+    });
+
+    telnyxService.addEventListener('error', (error) => {
+      console.error('ChatService: Telnyx error:', error);
+    });
+  }
+
+  handleIncomingCall(call) {
+    // Find or create chat for the caller
+    const callerNumber = call.callerNumber || call.from;
+    const callerName = call.callerName || 'Unknown';
+    
+    // Show notification
+    notificationService.showCallNotification(callerName, 'voice', call.callId);
+    
+    // Notify chat listeners about incoming call
+    this.notifyChatListeners('incomingCall', {
+      callId: call.callId,
+      callerName,
+      callerNumber,
+      call
+    });
+  }
+
+  handleCallStateChanged(state, call) {
+    // Notify listeners about call state changes
+    this.notifyChatListeners('callStateChanged', {
+      state,
+      call,
+      callId: call.callId
+    });
+
+    // Add call message to relevant chat
+    if (call.callerNumber || call.destinationNumber) {
+      const otherNumber = call.direction === 'inbound' 
+        ? call.callerNumber 
+        : call.destinationNumber;
+      
+      const chat = this.findChatByPhoneNumber(otherNumber);
+      if (chat) {
+        this.addCallMessageToChat(chat.id, state, call);
+      }
+    }
+  }
+
+  findChatByPhoneNumber(phoneNumber) {
+    for (let chat of this.activeChats.values()) {
+      if (chat.phoneNumber === phoneNumber) {
+        return chat;
+      }
+    }
+    return null;
+  }
+
+  addCallMessageToChat(chatId, callState, call) {
+    const chat = this.activeChats.get(chatId);
+    if (!chat) return;
+
+    let messageText = '';
+    let messageType = 'call_update';
+
+    switch (callState) {
+      case 'initiated':
+        messageText = call.direction === 'inbound' 
+          ? 'Incoming call' 
+          : 'Outgoing call';
+        messageType = 'call_start';
+        break;
+      case 'active':
+        messageText = 'Call started';
+        break;
+      case 'ended':
+        const duration = call.duration || 0;
+        messageText = `Call ended (${this.formatCallDuration(duration)})`;
+        messageType = 'call_end';
+        break;
+      default:
+        messageText = `Call ${callState}`;
+    }
+
+    const message = {
+      id: this.generateMessageId(),
+      chatId,
+      senderId: call.direction === 'inbound' ? chat.otherParticipant.id : this.currentUserId,
+      senderName: call.direction === 'inbound' ? chat.otherParticipant.name : 'You',
+      text: messageText,
+      type: messageType,
+      timestamp: new Date().toISOString(),
+      status: 'sent',
+      readBy: [this.currentUserId],
+      callData: {
+        callId: call.callId,
+        duration: call.duration,
+        direction: call.direction
+      }
+    };
+
+    chat.messages.push(message);
+    chat.lastMessage = message;
+    chat.lastActivity = message.timestamp;
+
+    this.activeChats.set(chatId, chat);
+    this.saveChats();
+    this.notifyMessageListeners(chatId, message);
+  }
+
+  formatCallDuration(seconds) {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
   // Initialize chat service
-  async initialize(userId) {
+  async initialize(userId, telnyxConfig = null) {
     try {
       this.currentUserId = userId;
       await this.loadChats();
+      
+      // Initialize Telnyx if config provided
+      if (telnyxConfig) {
+        await telnyxService.initialize(telnyxConfig);
+        await telnyxService.connect();
+      }
+      
       this.connectionStatus = 'connected';
       console.log('Chat Service initialized for user:', userId);
     } catch (error) {
       console.error('Failed to initialize chat service:', error);
+      throw error;
     }
   }
 
@@ -45,28 +185,41 @@ class ChatService {
   }
 
   // Create or get existing chat
-  async createChat(participantId, participantName, participantType = 'patient') {
-    const chatId = this.generateChatId(this.currentUserId, participantId);
-    
-    if (!this.activeChats.has(chatId)) {
-      const newChat = {
+  async createChat(participantId, participantName, participantType, phoneNumber = null) {
+    try {
+      const chatId = this.generateChatId();
+      
+      const chat = {
         id: chatId,
         participants: [
-          { id: this.currentUserId, name: 'You', type: 'doctor' },
-          { id: participantId, name: participantName, type: participantType }
+          {
+            id: this.currentUserId,
+            name: 'You',
+            type: 'current_user'
+          },
+          {
+            id: participantId,
+            name: participantName,
+            type: participantType,
+            phoneNumber: phoneNumber
+          }
         ],
         messages: [],
         lastMessage: null,
         lastActivity: new Date().toISOString(),
-        unreadCount: 0,
-        status: 'active'
+        isRead: true,
+        phoneNumber: phoneNumber // Store phone number for calling
       };
-      
-      this.activeChats.set(chatId, newChat);
+
+      this.activeChats.set(chatId, chat);
       await this.saveChats();
+      
+      console.log('Chat created with phone number:', phoneNumber);
+      return chat;
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      throw error;
     }
-    
-    return this.activeChats.get(chatId);
   }
 
   // Send text message
@@ -240,32 +393,42 @@ class ChatService {
     });
   }
 
-  // Start voice call
-  async initiateVoiceCall(chatId) {
+  // Start voice call using Telnyx
+  async initiateVoiceCall(chatId, phoneNumber = null) {
     try {
       const chat = this.activeChats.get(chatId);
       if (!chat) throw new Error('Chat not found');
 
-      const otherParticipant = chat.participants.find(p => p.id !== this.currentUserId);
+      // Get phone number from chat or parameter
+      const destinationNumber = phoneNumber || chat.phoneNumber || chat.participants.find(p => p.id !== this.currentUserId)?.phoneNumber;
       
+      if (!destinationNumber) {
+        throw new Error('No phone number available for this contact');
+      }
+
+      // Check Telnyx connection
+      if (!telnyxService.getCurrentCallState().isConnected) {
+        throw new Error('Not connected to calling service. Please check your connection.');
+      }
+
+      // Make call through Telnyx
+      const call = await telnyxService.makeCall(
+        destinationNumber,
+        'Professional', // caller name
+        null // caller number (will use default from config)
+      );
+
       // Send call initiation message
       await this.sendMessage(chatId, 'Voice call initiated', 'call_start');
       
-      // In a real app, you'd integrate with a service like Agora, Twilio, or WebRTC
-      console.log('Initiating voice call with:', otherParticipant.name);
+      console.log('Voice call initiated:', call.callId);
       
-      // Show notification to other user
-      notificationService.showCallNotification(
-        'You',
-        'voice',
-        this.generateCallId()
-      );
-
       return {
-        callId: this.generateCallId(),
+        callId: call.callId,
         type: 'voice',
-        participants: chat.participants,
-        status: 'initiating'
+        destinationNumber,
+        status: 'initiating',
+        telnyxCall: call
       };
     } catch (error) {
       console.error('Error initiating voice call:', error);
@@ -273,32 +436,42 @@ class ChatService {
     }
   }
 
-  // Start video call
-  async initiateVideoCall(chatId) {
+  // Start video call using Telnyx
+  async initiateVideoCall(chatId, phoneNumber = null) {
     try {
       const chat = this.activeChats.get(chatId);
       if (!chat) throw new Error('Chat not found');
 
-      const otherParticipant = chat.participants.find(p => p.id !== this.currentUserId);
+      // Get phone number from chat or parameter
+      const destinationNumber = phoneNumber || chat.phoneNumber || chat.participants.find(p => p.id !== this.currentUserId)?.phoneNumber;
       
+      if (!destinationNumber) {
+        throw new Error('No phone number available for this contact');
+      }
+
+      // Check Telnyx connection
+      if (!telnyxService.getCurrentCallState().isConnected) {
+        throw new Error('Not connected to calling service. Please check your connection.');
+      }
+
+      // Make video call through Telnyx
+      const call = await telnyxService.makeVideoCall(
+        destinationNumber,
+        'Professional', // caller name
+        null // caller number (will use default from config)
+      );
+
       // Send call initiation message
       await this.sendMessage(chatId, 'Video call initiated', 'call_start');
       
-      // In a real app, you'd integrate with a service like Agora, Twilio, or WebRTC
-      console.log('Initiating video call with:', otherParticipant.name);
+      console.log('Video call initiated:', call.callId);
       
-      // Show notification to other user
-      notificationService.showCallNotification(
-        'You',
-        'video',
-        this.generateCallId()
-      );
-
       return {
-        callId: this.generateCallId(),
+        callId: call.callId,
         type: 'video',
-        participants: chat.participants,
-        status: 'initiating'
+        destinationNumber,
+        status: 'initiating',
+        telnyxCall: call
       };
     } catch (error) {
       console.error('Error initiating video call:', error);
@@ -306,22 +479,119 @@ class ChatService {
     }
   }
 
+  // Answer incoming call
+  async answerCall(callId) {
+    try {
+      const success = telnyxService.answerCall();
+      if (success) {
+        console.log('Call answered:', callId);
+        return { success: true, callId };
+      } else {
+        throw new Error('Failed to answer call');
+      }
+    } catch (error) {
+      console.error('Error answering call:', error);
+      throw error;
+    }
+  }
+
+  // Reject incoming call
+  async rejectCall(callId) {
+    try {
+      const success = telnyxService.rejectCall();
+      if (success) {
+        console.log('Call rejected:', callId);
+        return { success: true, callId };
+      } else {
+        throw new Error('Failed to reject call');
+      }
+    } catch (error) {
+      console.error('Error rejecting call:', error);
+      throw error;
+    }
+  }
+
   // End call
   async endCall(callId, duration = 0) {
     try {
-      // In a real app, you'd clean up the call session
-      console.log('Ending call:', callId);
-      
-      return {
-        callId,
-        status: 'ended',
-        duration,
-        endTime: new Date().toISOString()
-      };
+      const success = telnyxService.endCall();
+      if (success) {
+        console.log('Call ended:', callId);
+        return {
+          callId,
+          status: 'ended',
+          duration,
+          endTime: new Date().toISOString()
+        };
+      } else {
+        throw new Error('Failed to end call');
+      }
     } catch (error) {
       console.error('Error ending call:', error);
       throw error;
     }
+  }
+
+  // Get current call information
+  getCurrentCall() {
+    const callState = telnyxService.getCurrentCallState();
+    if (callState.hasActiveCall) {
+      return {
+        callId: telnyxService.activeCall?.callId,
+        state: callState.callState,
+        direction: callState.callDirection,
+        streams: telnyxService.getCallStreams()
+      };
+    }
+    return null;
+  }
+
+  // Call control methods
+  async holdCall() {
+    return telnyxService.holdCall();
+  }
+
+  async resumeCall() {
+    return telnyxService.resumeCall();
+  }
+
+  async toggleMute() {
+    return telnyxService.toggleMute();
+  }
+
+  async toggleVideo() {
+    return telnyxService.toggleVideo();
+  }
+
+  async sendDTMF(tone) {
+    return telnyxService.sendDTMF(tone);
+  }
+
+  // Set up call quality monitoring
+  setCallQualityCallback(callback) {
+    telnyxService.setCallQualityCallback(callback);
+  }
+
+  // Chat listener management
+  addChatListener(callback) {
+    this.chatListeners.push(callback);
+  }
+
+  removeChatListener(callback) {
+    const index = this.chatListeners.indexOf(callback);
+    if (index > -1) {
+      this.chatListeners.splice(index, 1);
+    }
+  }
+
+  notifyChatListeners(event, data) {
+    this.chatListeners.forEach(callback => {
+      try {
+        callback(event, data);
+      } catch (error) {
+        console.error('Error in chat listener:', error);
+      }
+    });
   }
 
   // Delete chat

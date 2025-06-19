@@ -15,12 +15,35 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { doctorProfile } = route.params;
+  
+  // Default doctor profile data
+  const defaultDoctorProfile = {
+    firstName: 'John',
+    lastName: 'Smith',
+    email: 'dr.johnsmith@medicenter.com',
+    phone: '+1 (555) 123-4567',
+    specialization: 'Cardiologist',
+    hospital: 'City Medical Center',
+    department: 'Cardiology',
+    experience: '10+ years',
+    licenseNumber: 'MD-12345',
+    rating: 4.8,
+    totalPatients: 1250,
+    completedAppointments: 3500,
+    avatar: null
+  };
+  
+  // Use doctorProfile from route params if available, otherwise use default
+  const { doctorProfile = defaultDoctorProfile } = route.params || {};
 
   const [profile, setProfile] = useState(doctorProfile);
 
   const handleEditProfile = () => {
     Alert.alert('Edit Profile', 'Profile editing functionality coming soon!');
+  };
+
+  const handleTelnyxTest = () => {
+    navigation.navigate('TelnyxTestScreen');
   };
 
   const handleLogout = () => {
@@ -153,6 +176,11 @@ const ProfileScreen = () => {
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="help-circle" size={24} color="#4A90E2" />
             <Text style={styles.actionButtonText}>Help & Support</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionButton} onPress={handleTelnyxTest}>
+            <Ionicons name="call" size={24} color="#4A90E2" />
+            <Text style={styles.actionButtonText}>Test Calling System</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
