@@ -8,6 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Import Authentication Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
+// Import Error Boundary
+import ErrorBoundary from './src/components/ErrorBoundary';
+
 // Import Auth Stack
 import AuthStack from './src/navigation/AuthStack';
 
@@ -59,6 +62,10 @@ import MedicationRefill from './src/pages/MedicationRefill';
 import PharmaBundles from './src/pages/PharmaBundles/PharmaBundles';
 import InstitutionPackages from './src/pages/PharmaBundles/InstitutionPackages';
 import PackageDetails from './src/pages/PharmaBundles/PackageDetails';
+
+// Import Integration Example
+import UserManagementExample from './src/components/UserManagementExample';
+
 // import FlutterwavePayment from './src/pages/Wallet/FlutterwavePayment';
 
 const Stack = createNativeStackNavigator();
@@ -85,13 +92,15 @@ const MainLayout = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {renderScreen()}
-      </View>
-      <BottomNav activeTab={activeTab} onTabPress={setActiveTab} navigation={navigation} />
-      <StatusBar style="auto" />
-    </SafeAreaView>
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          {renderScreen()}
+        </View>
+        <BottomNav activeTab={activeTab} onTabPress={setActiveTab} navigation={navigation} />
+        <StatusBar style="auto" />
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 };
 
@@ -150,6 +159,18 @@ const AppNavigator = () => {
           <Stack.Screen name="InstitutionPackages" component={InstitutionPackages} />
           <Stack.Screen name="PackageDetails" component={PackageDetails} />
           <Stack.Screen name="PaystackPayment" component={PaystackPayment} options={{ headerShown: false }} />
+          {/* Integration Example Screen */}
+          <Stack.Screen 
+            name="UserManagementExample" 
+            component={UserManagementExample} 
+            options={{ 
+              headerShown: true, 
+              title: 'Integration Example',
+              headerStyle: { backgroundColor: '#007bff' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' }
+            }} 
+          />
           {/* <Stack.Screen name="FlutterwavePayment" component={FlutterwavePayment} options={{ headerShown: false }} /> */}
         </Stack.Navigator>
       ) : (
@@ -163,9 +184,11 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

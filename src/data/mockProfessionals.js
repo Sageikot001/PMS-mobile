@@ -4,7 +4,7 @@ export const mockProfessionals = [
     type: 'doctor',
     firstName: 'John',
     lastName: 'Smith',
-    email: 'john.smith@carepoint.com',
+    email: 'ikotnsikak@gmail.com',
     password: 'Doctor123!', // In a real app, this would be hashed
     phone: '+2348012345678',
     licenseNumber: 'MD123456',

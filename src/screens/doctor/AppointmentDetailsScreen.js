@@ -9,11 +9,17 @@ import {
   Alert,
   Modal,
   TextInput,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import chatService from '../../services/ChatService';
 import notificationService from '../../services/NotificationService';
+import doctorService from '../../services/DoctorService';
+import meetingNotificationService from '../../services/MeetingNotificationService';
+import emailService from '../../services/EmailService';
+import googleMeetService from '../../services/GoogleMeetService';
 import { getAppointmentById } from '../../data/appointmentsData';
 
 // Simple custom calendar component
@@ -512,20 +518,250 @@ const AppointmentDetailsScreen = () => {
     );
   };
 
-  // Google Meet call handling
+  // Google Meet call handling with comprehensive integration
   const handleGoogleMeetCall = async () => {
-    // In a real app, you'd integrate with Google Meet API
-    const meetingCode = `${appointment.id}-${Date.now().toString().slice(-6)}`;
-    const meetUrl = `https://meet.google.com/${meetingCode}`;
+    try {
+      // Get doctor's and patient's information
+      const doctorEmail = doctorService.getCurrentDoctorEmail();
+      const doctorName = doctorService.getCurrentDoctorName();
+      const doctorContact = doctorService.getCurrentDoctorContact();
+      const patientEmail = appointment.contactInfo?.email;
+      
+      if (!patientEmail) {
+        Alert.alert('Error', 'Patient email address not available. Cannot set up Google Meet.');
+        return;
+      }
     
     Alert.alert(
-      'Google Meet',
-      `Meeting Code: ${meetingCode}\n\nShare this meeting link with ${appointment.patient}:\n${meetUrl}`,
-      [
-        { text: 'Copy Link', onPress: () => Alert.alert('Link Copied', 'Meeting link copied to clipboard') },
-        { text: 'Join Meeting', onPress: () => Alert.alert('Google Meet', 'Opening Google Meet...') }
-      ]
-    );
+        'Google Meet Setup',
+        `Setting up Google Meet consultation for ${appointment.patient}\n\n` +
+        `👨‍⚕️ Doctor: ${doctorName}\n` +
+        `📧 Doctor Email: ${doctorEmail}\n` +
+        `👤 Patient: ${appointment.patient}\n` +
+        `📧 Patient Email: ${patientEmail}\n\n` +
+        `This will:\n` +
+        `• Create actual Google Meet room\n` +
+        `• Open email client for patient invitation\n` +
+        `• Add meeting link to in-app chat\n` +
+        `• Set up meeting notifications`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Create & Start Meeting',
+            onPress: async () => {
+              try {
+                console.log('🔗 Starting Google Meet setup process...');
+
+                // 1. Create actual Google Meet meeting
+                const doctorInfo = {
+                  name: doctorName,
+                  email: doctorEmail,
+                  specialization: doctorContact.specialization
+                };
+                
+                const patientInfo = {
+                  name: appointment.patient,
+                  email: patientEmail
+                };
+
+                const meetingData = await googleMeetService.createMeeting(
+                  appointment,
+                  doctorInfo,
+                  patientInfo
+                );
+
+                const meetUrl = meetingData.url;
+                console.log('✅ Google Meet created:', meetUrl);
+
+                // 2. Initialize email service if not already done
+                await emailService.initialize();
+
+                // 3. Open email client for patient invitation
+                const emailResult = await emailService.sendMeetingInvitation(
+                  doctorInfo,
+                  patientInfo,
+                  appointment,
+                  meetUrl
+                );
+                console.log('✅ Email client opened:', emailResult);
+                
+                // 4. Add meeting link to in-app chat
+                const chatResult = await addMeetingLinkToChat(appointment, meetUrl, doctorName);
+                console.log('✅ Chat updated:', chatResult);
+                
+                // 5. Set up meeting notifications
+                const notificationResult = await setupMeetingNotifications(appointment, meetUrl, doctorName);
+                console.log('✅ Notifications set up:', notificationResult);
+                
+                // 6. Show success message and redirect
+                Alert.alert(
+                  'Meeting Created Successfully! 🎉',
+                  `Google Meet room created and configured!\n\n` +
+                  `📧 ${emailResult.status === 'opened' ? 'Email client opened for patient invitation' : emailResult.status === 'simulated' ? 'Email simulated (development mode)' : 'Email preparation completed'}\n` +
+                  `💬 Meeting link added to patient chat\n` +
+                  `🔔 Notifications configured\n` +
+                  `🔗 Meeting URL: ${meetUrl}\n\n` +
+                  `Redirecting you to Google Meet...`,
+                  [
+                    {
+                      text: 'Join Meeting Now',
+                      onPress: async () => {
+                        try {
+                          await googleMeetService.joinMeeting(meetUrl);
+                        } catch (error) {
+                          console.error('Error joining meeting:', error);
+                          await Clipboard.setStringAsync(meetUrl);
+                          Alert.alert('Meeting Link Copied', 'Meeting link copied to clipboard. Please open it manually.');
+                        }
+                      }
+                    },
+                    {
+                      text: 'Copy Link',
+                      onPress: async () => {
+                        await Clipboard.setStringAsync(meetUrl);
+                        Alert.alert('Success! 📋', 'Google Meet link copied to clipboard');
+                      }
+                    }
+                  ]
+                );
+                
+              } catch (error) {
+                console.error('Error setting up Google Meet:', error);
+                Alert.alert('Setup Error', `Failed to complete Google Meet setup: ${error.message}`);
+              }
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Error setting up Google Meet:', error);
+      Alert.alert('Error ❌', 'Failed to set up Google Meet. Please try again.');
+    }
+  };
+
+  // Function to add meeting link to in-app chat
+  const addMeetingLinkToChat = async (appointment, meetUrl, doctorName) => {
+    try {
+      console.log('💬 Adding meeting link to chat...');
+      
+      // Initialize chat service with current doctor ID if not already done
+      const currentDoctorId = 'doctor_current'; // In a real app, get from auth
+      if (!chatService.currentUserId) {
+        await chatService.initialize(currentDoctorId);
+      }
+      
+      // Ensure consistent patient ID handling
+      const patientId = appointment.patientId || `patient_${appointment.patient.toLowerCase().replace(/\s+/g, '_')}`;
+      console.log('👤 Patient ID:', patientId);
+      
+      // Get or create chat for the appointment
+      const chat = await chatService.createChat(
+        patientId,
+        appointment.patient,
+        'patient'
+      );
+      
+      console.log('💬 Chat created/found:', chat.id);
+      
+      // Create a professional meeting link message
+      const meetingMessage = `🔗 Google Meet Link Ready
+
+Your medical consultation with ${doctorName} is scheduled for ${appointment.date} at ${appointment.time}.
+
+📱 Join Meeting: ${meetUrl}
+
+📋 Instructions:
+• Click the link at your appointment time
+• Allow camera and microphone access
+• The doctor will join you shortly
+• Meeting duration: ${appointment.duration}
+
+This link was automatically generated for your appointment.`;
+      
+      // Send meeting link message to chat
+      console.log('📤 Sending meeting link message...');
+      const message = await chatService.sendMessage(chat.id, meetingMessage, 'meeting_link');
+      console.log('✅ Meeting link message sent:', message.id);
+      
+      // Add additional helpful message
+      const helpMessage = `💡 Meeting Tips:
+• Test your camera/microphone beforehand
+• Join 2-3 minutes early
+• Have your questions ready
+• If you have issues, call: ${appointment.contactInfo?.phone || 'carepoint@gmail.com'}`;
+      
+      console.log('📤 Sending help message...');
+      const helpMsg = await chatService.sendMessage(chat.id, helpMessage, 'meeting_help');
+      console.log('✅ Help message sent:', helpMsg.id);
+      
+      // Force save chats to ensure persistence
+      await chatService.saveChats();
+      console.log('💾 Chats saved to storage');
+      
+      console.log('💬 Meeting link added to chat successfully');
+      console.log('📱 Chat ID:', chat.id, 'Patient ID:', patientId);
+      
+      return { success: true, chatId: chat.id, messageCount: 2 };
+    } catch (error) {
+      console.error('Error adding meeting link to chat:', error);
+      console.error('Error details:', error.message, error.stack);
+      
+      // Return partial success to not break the flow
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Function to set up meeting notifications
+  const setupMeetingNotifications = async (appointment, meetUrl, doctorName) => {
+    try {
+      console.log('🔔 Setting up meeting notifications...');
+      
+      const doctorContact = doctorService.getCurrentDoctorContact();
+      const appointmentDateTime = new Date(`${appointment.date} ${appointment.time}`);
+      
+      // Doctor and patient info for notifications
+      const doctorInfo = {
+        name: doctorName,
+        email: doctorContact.email,
+        role: 'doctor'
+      };
+      
+      const patientInfo = {
+        name: appointment.patient,
+        email: appointment.contactInfo?.email,
+        role: 'patient'
+      };
+      
+      // Register meeting with notification service
+      const meetingData = meetingNotificationService.registerMeeting(
+        appointment.id,
+        meetUrl,
+        doctorInfo,
+        patientInfo
+      );
+      
+      // Schedule reminder notifications for both parties
+      await meetingNotificationService.scheduleMeetingReminders(
+        appointment.id,
+        appointmentDateTime,
+        doctorInfo,
+        patientInfo
+      );
+      
+      console.log('🔔 Meeting notifications configured successfully');
+      
+      // Simulate doctor joining the meeting (since doctor initiated it)
+      // In a real app, this would be detected when the doctor actually joins
+      setTimeout(() => {
+        meetingNotificationService.participantJoined(appointment.id, 'doctor');
+      }, 2000);
+      
+      return meetingData;
+    } catch (error) {
+      console.error('Error setting up notifications:', error);
+      throw error;
+    }
   };
 
   const handleCompleteAppointment = () => {

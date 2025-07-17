@@ -34,7 +34,7 @@ export const mockAppointments = {
       previousVisit: getDateString(-20),
       contactInfo: {
         phone: '+1 (555) 123-4567',
-        email: 'judith.scoft@email.com'
+        email: 'sageikot@gmail.com'
       }
     },
     { 

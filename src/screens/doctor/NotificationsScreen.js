@@ -143,15 +143,27 @@ const NotificationsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await notificationService.deleteNotifications(selectedNotifications);
-              setNotifications(prev => 
-                prev.filter(notification => !selectedNotifications.includes(notification.id))
-              );
+              if (activeTab === 'history') {
+                // Delete from history
+                await notificationService.deleteNotifications(selectedNotifications);
+                setNotifications(prev => 
+                  prev.filter(notification => !selectedNotifications.includes(notification.id))
+                );
+              } else {
+                // Delete from scheduled (cancel scheduled notifications)
+                selectedNotifications.forEach(notificationId => {
+                  notificationService.cancelNotification(notificationId);
+                });
+                setScheduledNotifications(prev => 
+                  prev.filter(notification => !selectedNotifications.includes(notification.id))
+                );
+              }
+              
               setSelectedNotifications([]);
               setIsSelectionMode(false);
-              Alert.alert('Success', 'Notifications deleted');
+              Alert.alert('Success', `Notifications ${activeTab === 'history' ? 'deleted' : 'cancelled'}`);
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete notifications');
+              Alert.alert('Error', `Failed to ${activeTab === 'history' ? 'delete' : 'cancel'} notifications`);
             }
           }
         }
@@ -449,23 +461,25 @@ const NotificationsScreen = () => {
 
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
-          onPress={() => setActiveTab('history')}
-        >
-          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-            History ({notifications.length})
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'scheduled' && styles.activeTab]}
-          onPress={() => setActiveTab('scheduled')}
-        >
-          <Text style={[styles.tabText, activeTab === 'scheduled' && styles.activeTabText]}>
-            Scheduled ({scheduledNotifications.length})
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.tabsWrapper}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+            onPress={() => setActiveTab('history')}
+          >
+            <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+              History ({notifications.length})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'scheduled' && styles.activeTab]}
+            onPress={() => setActiveTab('scheduled')}
+          >
+            <Text style={[styles.tabText, activeTab === 'scheduled' && styles.activeTabText]}>
+              Scheduled ({scheduledNotifications.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Content */}

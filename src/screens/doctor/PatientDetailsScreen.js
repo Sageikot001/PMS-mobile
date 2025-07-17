@@ -20,7 +20,7 @@ const mockPatientFullDetails = {
     gender: 'Female',
     bloodType: 'O+',
     contact: '555-0101',
-    email: 'judith.scoft@example.com',
+    email: 'sageikot@gmail.com',
     address: '123 Health St, Wellness City',
     profilePicUrl: null,
     medicalHistory: [

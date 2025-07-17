@@ -6,6 +6,32 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Storage keys
 const USER_KEY = '@user_data';
 
+// Helper function to transform user data for consistent profile format
+const transformUserDataForProfile = (userData) => {
+  const transformed = { ...userData };
+  
+  // Combine firstName and lastName into name
+  if (userData.firstName && userData.lastName) {
+    transformed.name = `${userData.firstName} ${userData.lastName}`;
+  } else if (userData.firstName) {
+    transformed.name = userData.firstName;
+  } else if (userData.lastName) {
+    transformed.name = userData.lastName;
+  }
+  
+  // Map phoneNumber to phone
+  if (userData.phoneNumber) {
+    transformed.phone = userData.phoneNumber;
+  }
+  
+  // Keep individual fields for compatibility
+  transformed.firstName = userData.firstName;
+  transformed.lastName = userData.lastName;
+  transformed.phoneNumber = userData.phoneNumber;
+  
+  return transformed;
+};
+
 /**
  * Get the user's profile
  */
@@ -13,11 +39,14 @@ export const getProfile = async () => {
   if (isDevelopment()) {
     // In development, use stored data
     const userData = await AsyncStorage.getItem(USER_KEY);
-    return userData ? JSON.parse(userData) : null;
+    if (!userData) return null;
+    
+    const user = JSON.parse(userData);
+    return transformUserDataForProfile(user);
   }
   
   const response = await api.get(ENDPOINTS.PROFILE.GET);
-  return response.data;
+  return transformUserDataForProfile(response.data);
 };
 
 /**
@@ -31,18 +60,59 @@ export const updateProfile = async (profileData) => {
     if (!userData) throw new Error('User not found');
     
     const user = JSON.parse(userData);
-    const updatedUser = { ...user, ...profileData, updatedAt: new Date().toISOString() };
     
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-    return updatedUser;
+    // Transform profile data for consistent updates
+    let transformedProfileData = { ...profileData };
+    
+    // Handle name updates - split name into firstName/lastName if needed
+    if (profileData.name && !profileData.firstName && !profileData.lastName) {
+      const nameParts = profileData.name.split(' ');
+      transformedProfileData.firstName = nameParts[0] || '';
+      transformedProfileData.lastName = nameParts.slice(1).join(' ') || '';
+    }
+    
+    // Handle phone mapping
+    if (profileData.phone) {
+      transformedProfileData.phoneNumber = profileData.phone;
+    }
+    
+    const updatedUser = { 
+      ...user, 
+      ...transformedProfileData, 
+      updatedAt: new Date().toISOString() 
+    };
+    
+    // Transform the updated user data for consistent profile format
+    const transformedUser = transformUserDataForProfile(updatedUser);
+    
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
+    return transformedUser;
   }
   
-  const response = await api.put(ENDPOINTS.PROFILE.UPDATE, profileData);
+  // Transform profile data for backend compatibility
+  let backendProfileData = { ...profileData };
+  
+  // Handle name updates - split name into firstName/lastName if needed
+  if (profileData.name && !profileData.firstName && !profileData.lastName) {
+    const nameParts = profileData.name.split(' ');
+    backendProfileData.firstName = nameParts[0] || '';
+    backendProfileData.lastName = nameParts.slice(1).join(' ') || '';
+  }
+  
+  // Handle phone mapping
+  if (profileData.phone) {
+    backendProfileData.phoneNumber = profileData.phone;
+  }
+  
+  const response = await api.put(ENDPOINTS.PROFILE.UPDATE, backendProfileData);
+  
+  // Transform response data for consistent profile format
+  const transformedData = transformUserDataForProfile(response.data);
   
   // Update local storage
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data));
+  await AsyncStorage.setItem(USER_KEY, JSON.stringify(transformedData));
   
-  return response.data;
+  return transformedData;
 };
 
 /**
@@ -62,8 +132,11 @@ export const uploadProfilePhoto = async (photo) => {
       updatedAt: new Date().toISOString()
     };
     
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-    return updatedUser;
+    // Transform the updated user data for consistent profile format
+    const transformedUser = transformUserDataForProfile(updatedUser);
+    
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(transformedUser));
+    return transformedUser;
   }
   
   // Create form data
@@ -81,10 +154,13 @@ export const uploadProfilePhoto = async (photo) => {
     },
   });
   
-  // Update local storage
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data));
+  // Transform response data for consistent profile format
+  const transformedData = transformUserDataForProfile(response.data);
   
-  return response.data;
+  // Update local storage
+  await AsyncStorage.setItem(USER_KEY, JSON.stringify(transformedData));
+  
+  return transformedData;
 };
 
 /**
@@ -94,16 +170,17 @@ export const uploadProfilePhoto = async (photo) => {
  */
 export const changePassword = async (currentPassword, newPassword) => {
   if (isDevelopment()) {
-    // In development, just simulate success
+    // In development, simulate password change
+    await new Promise(resolve => setTimeout(resolve, 800));
     return { success: true, message: 'Password changed successfully' };
   }
   
-  const response = await api.post(ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+  const response = await api.put(ENDPOINTS.PROFILE.CHANGE_PASSWORD, {
     currentPassword,
     newPassword,
   });
   
-  return response;
+  return response.data;
 };
 
 export default {

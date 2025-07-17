@@ -187,7 +187,14 @@ class ChatService {
   // Create or get existing chat
   async createChat(participantId, participantName, participantType, phoneNumber = null) {
     try {
-      const chatId = this.generateChatId();
+      // Check if chat already exists for this participant
+      const existingChat = this.findExistingChat(participantId);
+      if (existingChat) {
+        console.log('📱 Found existing chat:', existingChat.id);
+        return existingChat;
+      }
+
+      const chatId = this.generateChatId(participantId); // Use participant ID for consistent chat IDs
       
       const chat = {
         id: chatId,
@@ -204,22 +211,52 @@ class ChatService {
             phoneNumber: phoneNumber
           }
         ],
+        otherParticipant: {
+          id: participantId,
+          name: participantName,
+          type: participantType
+        },
         messages: [],
         lastMessage: null,
         lastActivity: new Date().toISOString(),
         isRead: true,
+        unreadCount: 0,
         phoneNumber: phoneNumber // Store phone number for calling
       };
 
       this.activeChats.set(chatId, chat);
       await this.saveChats();
       
-      console.log('Chat created with phone number:', phoneNumber);
+      // Notify chat listeners about new chat
+      this.notifyChatListeners('chatCreated', chat);
+      
+      console.log('💬 Chat created for participant:', participantName);
       return chat;
     } catch (error) {
       console.error('Error creating chat:', error);
       throw error;
     }
+  }
+
+  // Find existing chat by participant ID
+  findExistingChat(participantId) {
+    for (let chat of this.activeChats.values()) {
+      const otherParticipant = chat.participants.find(p => p.id !== this.currentUserId);
+      if (otherParticipant && otherParticipant.id === participantId) {
+        return chat;
+      }
+    }
+    return null;
+  }
+
+  // Generate consistent chat ID based on participant
+  generateChatId(participantId = null) {
+    if (participantId) {
+      // Generate consistent ID for same participants
+      const sortedIds = [this.currentUserId, participantId].sort();
+      return `chat_${sortedIds.join('_')}`;
+    }
+    return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   // Send text message
@@ -254,67 +291,14 @@ class ChatService {
       // Notify listeners
       this.notifyMessageListeners(chatId, message);
 
-      // In a real app, you'd send this to your backend
-      // For now, we'll simulate receiving a response
-      setTimeout(() => {
-        this.simulateResponse(chatId);
-      }, 1000 + Math.random() * 2000);
+      // DO NOT simulate automatic responses - real chats only
+      console.log('💬 Message sent:', message.text);
 
       return message;
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
     }
-  }
-
-  // Simulate receiving a message (for testing)
-  async simulateResponse(chatId) {
-    const chat = this.activeChats.get(chatId);
-    if (!chat) return;
-
-    const otherParticipant = chat.participants.find(p => p.id !== this.currentUserId);
-    if (!otherParticipant) return;
-
-    const responses = [
-      'Thank you for your message.',
-      'I understand your concern.',
-      'Let me check that for you.',
-      'That sounds good.',
-      'I\'ll get back to you shortly.',
-      'Please let me know if you have any other questions.'
-    ];
-
-    const responseText = responses[Math.floor(Math.random() * responses.length)];
-    
-    const message = {
-      id: this.generateMessageId(),
-      chatId,
-      senderId: otherParticipant.id,
-      senderName: otherParticipant.name,
-      text: responseText,
-      type: 'text',
-      timestamp: new Date().toISOString(),
-      status: 'received',
-      readBy: []
-    };
-
-    chat.messages.push(message);
-    chat.lastMessage = message;
-    chat.lastActivity = message.timestamp;
-    chat.unreadCount += 1;
-
-    this.activeChats.set(chatId, chat);
-    await this.saveChats();
-
-    // Notify listeners
-    this.notifyMessageListeners(chatId, message);
-
-    // Show notification
-    notificationService.showChatNotification(
-      otherParticipant.name,
-      responseText,
-      chatId
-    );
   }
 
   // Subscribe to messages in a chat
@@ -628,10 +612,6 @@ class ChatService {
   }
 
   // Helper methods
-  generateChatId(userId1, userId2) {
-    return [userId1, userId2].sort().join('_');
-  }
-
   generateMessageId() {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
