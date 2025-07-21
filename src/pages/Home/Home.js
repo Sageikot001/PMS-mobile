@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  ScrollView, 
+  TouchableOpacity, 
+  Modal, 
+  FlatList, 
+  Pressable,
+  Image,
+  Dimensions
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CategoryCard from '../../components/cards/CategoryCard';
 import ServiceCard from '../../components/cards/ServiceCard';
@@ -13,6 +24,7 @@ import { pharmacyData } from '../../data/pharmacyData';
 import { FlashList } from '@shopify/flash-list';
 import { searchPharmaciesAndDrugs } from '../../data/pharmacyData';
 import SearchInput from '../../components/SearchInput';
+import CartIcon from '../../components/CartIcon';
 
 const CATEGORIES = [
   {
@@ -38,24 +50,30 @@ const CATEGORIES = [
 const SERVICES = [
   {
     id: '1',
+    title: 'My Appointments',
+    icon: 'calendar',
+    route: 'UserAppointments',
+  },
+  {
+    id: '2',
     title: 'Ambulance Service',
     icon: 'bus',
     route: 'AmbulanceService',
   },
   {
-    id: '2',
+    id: '3',
     title: 'Medication refill',
     icon: 'medical',
     route: 'MedicationRefill',
   },
   {
-    id: '3',
+    id: '4',
     title: 'Pharma bundles',
     icon: 'cart',
     route: 'PharmaBundles',
   },
   {
-    id: '4',
+    id: '5',
     title: 'Chat with Kai',
     icon: 'chatbubbles',
   },
@@ -154,10 +172,8 @@ const Home = ({ navigation }) => {
           <Ionicons name="chevron-down" size={24} color="#444" />
         </TouchableOpacity>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => navigation.navigate('Cart')}>
-            <Ionicons name="cart-outline" size={24} color="#444" />
-          </TouchableOpacity>
-          <TouchableOpacity>
+          <CartIcon navigation={navigation} color="#444" />
+          <TouchableOpacity style={styles.notificationIcon}>
             <Ionicons name="notifications-outline" size={24} color="#444" />
           </TouchableOpacity>
         </View>
@@ -301,6 +317,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
   },
+  notificationIcon: {
+    padding: 8,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -379,7 +398,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(255,255,255,0.98)',
-    zIndex: 1000,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   homeCategoryCard: {
     marginRight: 12,

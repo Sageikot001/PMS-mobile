@@ -10,11 +10,14 @@ import {
   Dimensions,
   Modal,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import notificationService from '../../services/NotificationService';
-import { mockAppointments } from '../../data/appointmentsData';
+import AppointmentService, { APPOINTMENT_STATUS } from '../../services/AppointmentService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userData } from '../../data/dummyUser';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -133,11 +136,132 @@ const DoctorAppointmentsScreen = () => {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [availabilityDate, setAvailabilityDate] = useState('');
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Initialize notification service when component mounts
   useEffect(() => {
     initializeAndScheduleNotifications();
+    loadAppointments();
+    
+    // Add listener for appointment changes to enable real-time updates
+    const appointmentListener = (event, data) => {
+      console.log('📅 Appointment event received:', event, data);
+      if (event === 'appointment_created' || event === 'appointment_updated' || event === 'appointment_cancelled') {
+        // Refresh appointments when any appointment changes
+        loadAppointments();
+      }
+    };
+    
+    AppointmentService.addListener(appointmentListener);
+    
+    // Cleanup listener on unmount
+    return () => {
+      AppointmentService.removeListener(appointmentListener);
+    };
   }, []);
+
+  // Load appointments when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAppointments();
+    }, [])
+  );
+
+  // Load appointments for the doctor
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      
+      // Initialize AppointmentService with doctor data
+      const doctorUser = userData.doctor;
+      await AppointmentService.initialize(doctorUser, 'doctor');
+      
+      // Force refresh data to ensure we get the latest appointments
+      await AppointmentService.refreshData();
+      
+      // Get doctor's appointments
+      const doctorAppointments = await AppointmentService.getMyAppointments();
+      setAppointments(doctorAppointments);
+      
+      console.log(`👨‍⚕️ Loaded ${doctorAppointments.length} appointments for professional portal`);
+      
+      // Schedule notifications for appointments
+      scheduleAppointmentNotifications();
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      Alert.alert('Error', 'Failed to load appointments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update notifications when appointments change
+  useEffect(() => {
+    if (appointments.length > 0) {
+      scheduleAppointmentNotifications();
+    }
+  }, [appointments]);
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadAppointments();
+    setRefreshing(false);
+  };
+
+  // Handle appointment status update
+  const handleStatusUpdate = async (appointmentId, newStatus, notes = '') => {
+    try {
+      await AppointmentService.updateAppointmentStatus(appointmentId, newStatus, notes);
+      Alert.alert('Success', `Appointment ${newStatus} successfully`);
+      loadAppointments();
+    } catch (error) {
+      console.error('Error updating appointment status:', error);
+      Alert.alert('Error', 'Failed to update appointment status');
+    }
+  };
+
+  // Handle appointment cancellation
+  const handleCancelAppointment = (appointment) => {
+    Alert.alert(
+      'Cancel Appointment',
+      `Are you sure you want to cancel the appointment with ${appointment.patientName}?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: () => {
+            Alert.prompt(
+              'Cancel Appointment',
+              'Please provide a reason for cancellation:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Confirm Cancel',
+                  onPress: async (reason) => {
+                    if (reason?.trim()) {
+                      try {
+                        await AppointmentService.cancelAppointment(appointment.id, reason.trim());
+                        Alert.alert('Success', 'Appointment cancelled successfully');
+                        loadAppointments();
+                      } catch (error) {
+                        console.error('Error cancelling appointment:', error);
+                        Alert.alert('Error', 'Failed to cancel appointment');
+                      }
+                    }
+                  }
+                }
+              ],
+              'plain-text'
+            );
+          }
+        }
+      ]
+    );
+  };
 
   const initializeAndScheduleNotifications = async () => {
     try {
@@ -167,58 +291,40 @@ const DoctorAppointmentsScreen = () => {
       // Get today's date
       const today = new Date().toISOString().split('T')[0];
       
-      // Convert mock appointments to the format expected by notification service
-      Object.entries(mockAppointments).forEach(([dateStr, appointments]) => {
-        // Validate dateStr
-        if (!dateStr || typeof dateStr !== 'string') {
-          console.warn('Invalid date string:', dateStr);
+      // Convert real appointments to the format expected by notification service
+      appointments.forEach(appointment => {
+        if (!appointment || !appointment.id || !appointment.appointmentTime || !appointment.patientName) {
+          console.warn('Invalid appointment data:', appointment);
           return;
         }
 
+        const appointmentDate = new Date(appointment.appointmentDate).toISOString().split('T')[0];
+        
         // Only schedule notifications for today and future dates
-        if (dateStr >= today) {
-          const appointmentsForDate = appointments.map(appointment => {
-            // Validate appointment data
-            if (!appointment || !appointment.id || !appointment.time || !appointment.patient) {
-              console.warn('Invalid appointment data:', appointment);
-              return null;
-            }
+        if (appointmentDate >= today) {
+          const notificationAppointment = {
+            id: appointment.id,
+            date: appointmentDate, // Add the date field
+            appointmentTime: appointment.appointmentTime, // Use appointmentTime instead of time
+            patientName: appointment.patientName, // Use patientName instead of patient
+            type: appointment.type || 'Consultation',
+            duration: `${appointment.duration || 30} min`,
+            status: appointment.status || 'pending',
+            notes: appointment.reason || '',
+          };
 
-            return {
-              id: appointment.id,
-              date: dateStr,
-              time: appointment.time,
-              patient: appointment.patient,
-              type: appointment.type || 'Appointment',
-              duration: appointment.duration || '30 mins'
-            };
-          }).filter(Boolean); // Remove null entries
-
-          // Schedule all appointments for this date using the enhanced method
-          if (appointmentsForDate.length > 0) {
-            // For today's appointments, use the specialized method
-            if (dateStr === today) {
-              notificationService.scheduleAllTodaysReminders(appointmentsForDate);
-            } else {
-              // For future appointments, schedule individual reminders
-              appointmentsForDate.forEach(appointmentData => {
-                try {
-                  notificationService.scheduleAppointmentReminder(appointmentData, 30);
-                  notificationService.scheduleAppointmentReminder(appointmentData, 15);
-                  notificationService.scheduleAppointmentReminder(appointmentData, 5);
-                } catch (reminderError) {
-                  console.error('Error scheduling reminder for appointment:', appointmentData.id, reminderError);
-                }
-              });
-            }
+          try {
+            // Call scheduleAppointmentReminder with the appointment object as first parameter
+            notificationService.scheduleAppointmentReminder(notificationAppointment, 30);
+            notificationService.scheduleAppointmentReminder(notificationAppointment, 15);
+            notificationService.scheduleAppointmentReminder(notificationAppointment, 5);
+          } catch (error) {
+            console.error('Error scheduling notification for appointment:', appointment.id, error);
           }
         }
       });
-
-      // Clean up old notifications
-      notificationService.cleanupExpiredNotifications();
       
-      console.log('All appointment notifications scheduled successfully');
+      console.log('✅ Appointment notifications scheduled for professional portal');
     } catch (error) {
       console.error('Error in scheduleAppointmentNotifications:', error);
     }
@@ -260,29 +366,27 @@ const DoctorAppointmentsScreen = () => {
 
   // Memoize appointments for selected date
   const selectedDateAppointments = useMemo(() => {
-    return mockAppointments[selectedDate] || [];
-  }, [selectedDate]);
+    if (!appointments.length) return [];
+    
+    return appointments.filter(apt => {
+      const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+      return aptDate === selectedDate;
+    });
+  }, [selectedDate, appointments]);
 
   // Memoize marked dates
   const markedDates = useMemo(() => {
     const marked = {};
-    Object.keys(mockAppointments).forEach(date => {
+    appointments.forEach(apt => {
+      const date = new Date(apt.appointmentDate).toISOString().split('T')[0];
       marked[date] = {
         marked: true,
         dotColor: '#4A90E2',
       };
     });
     
-    // Add selection to current date
-    marked[selectedDate] = {
-      ...marked[selectedDate],
-      selected: true,
-      selectedColor: '#4A90E2',
-      selectedTextColor: '#ffffff'
-    };
-    
     return marked;
-  }, [selectedDate]);
+  }, [appointments]);
 
   // Toggle calendar visibility
   const toggleCalendar = useCallback(() => {
@@ -355,6 +459,7 @@ const DoctorAppointmentsScreen = () => {
   const renderAppointmentItem = useCallback((item, index) => {
     const typeColor = getTypeColor(item.type);
     const typeIcon = getTypeIcon(item.type);
+    const statusColor = getStatusColor(item.status);
 
     return (
       <TouchableOpacity 
@@ -364,20 +469,51 @@ const DoctorAppointmentsScreen = () => {
       >
         <View style={styles.itemHeader}>
           <View style={styles.timeContainer}>
-            <Text style={styles.time}>{item.time}</Text>
+            <Text style={styles.time}>{item.appointmentTime}</Text>
           </View>
           <View style={[styles.typeIcon, { backgroundColor: typeColor }]}>
             <Ionicons name={typeIcon} size={16} color="white" />
           </View>
         </View>
-        <Text style={styles.patientName}>{item.patient}</Text>
+        <Text style={styles.patientName}>{item.patientName}</Text>
+        <Text style={styles.appointmentReason}>{item.reason}</Text>
         <View style={styles.itemFooter}>
           <Text style={styles.appointmentType}>{item.type}</Text>
-          <Text style={styles.duration}>{item.duration}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
+            <Text style={styles.statusText}>{item.status}</Text>
+          </View>
+        </View>
+        
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          {item.status === 'pending' && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#4caf50' }]}
+              onPress={() => handleStatusUpdate(item.id, 'confirmed', 'Appointment confirmed by doctor')}
+            >
+              <Text style={styles.actionButtonText}>Accept</Text>
+            </TouchableOpacity>
+          )}
+          {item.status !== 'cancelled' && item.status !== 'completed' && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#f44336' }]}
+              onPress={() => handleCancelAppointment(item)}
+            >
+              <Text style={styles.actionButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+          {item.status === 'confirmed' && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#2196f3' }]}
+              onPress={() => handleStatusUpdate(item.id, 'completed', 'Consultation completed')}
+            >
+              <Text style={styles.actionButtonText}>Complete</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
-  }, [getTypeColor, getTypeIcon, handleAppointmentPress]);
+  }, [getTypeColor, getTypeIcon, handleAppointmentPress, handleStatusUpdate, handleCancelAppointment]);
 
   // Format date display
   const formatDateDisplay = useCallback((dateString) => {
@@ -505,6 +641,22 @@ const DoctorAppointmentsScreen = () => {
     navigation.navigate('ChatListScreen');
   };
 
+  // Get status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'confirmed':
+        return '#4caf50';
+      case 'pending':
+        return '#ff9800';
+      case 'cancelled':
+        return '#f44336';
+      case 'completed':
+        return '#2196f3';
+      default:
+        return '#757575';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -557,6 +709,9 @@ const DoctorAppointmentsScreen = () => {
           style={styles.appointmentsList}
           contentContainerStyle={styles.appointmentsContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
         >
           {selectedDateAppointments.length > 0 ? (
             selectedDateAppointments.map((item, index) => renderAppointmentItem(item, index))
@@ -893,6 +1048,11 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginBottom: 8,
   },
+  appointmentReason: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 8,
+  },
   itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -903,13 +1063,37 @@ const styles = StyleSheet.create({
     color: '#566573',
     fontWeight: '500',
   },
-  duration: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    backgroundColor: '#F8F9FA',
+  statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 15,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   emptyState: {
     flex: 1,

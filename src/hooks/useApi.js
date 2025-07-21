@@ -351,9 +351,4 @@ export const useRealTimeApi = (apiFunction, interval = 30000) => {
   };
 };
 
-export default {
-  useApi,
-  usePaginatedApi,
-  useFormApi,
-  useRealTimeApi,
-}; 
+// All hooks are already exported above with 'export const' 

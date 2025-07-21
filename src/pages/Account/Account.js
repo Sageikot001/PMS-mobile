@@ -1,247 +1,293 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 
-const MenuItem = ({ icon, title, onPress, showSwitch, isEnabled, onToggle }) => (
-  <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-    <View style={styles.menuItemLeft}>
-      {icon}
-      <Text style={styles.menuItemText}>{title}</Text>
-    </View>
-    {showSwitch ? (
-      <Switch
-        value={isEnabled}
-        onValueChange={onToggle}
-        trackColor={{ false: '#e0e0e0', true: '#7E3AF2' }}
-      />
-    ) : (
-      <Ionicons name="chevron-forward" size={24} color="#666" />
-    )}
-  </TouchableOpacity>
-);
+const Account = ({ navigation }) => {
+  const { user, logout } = useAuth();
 
-const Account = () => {
-  const [pushEnabled, setPushEnabled] = React.useState(true);
-  const navigation = useNavigation();
-  const { user, logout, loading } = useAuth();
-
-  // Handle logout with confirmation
   const handleLogout = () => {
     Alert.alert(
-      'Confirm Logout',
-      'Are you sure you want to log out?',
+      'Logout',
+      'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          onPress: async () => {
-            try {
-              await logout();
-              // No need to navigate - auth context will handle this
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          },
-          style: 'destructive'
-        },
+        { text: 'Logout', style: 'destructive', onPress: logout }
       ]
     );
   };
 
-  // Get user initials for avatar fallback
-  const getUserInitials = () => {
-    if (!user || !user.name) return '??';
-    
-    const nameParts = user.name.split(' ');
-    if (nameParts.length >= 2) {
-      return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
-    } else if (nameParts.length === 1) {
-      return nameParts[0].substring(0, 2).toUpperCase();
-    }
-    return '??';
-  };
+  const menuItems = [
+    {
+      title: 'Personal Details',
+      icon: 'person-outline',
+      screen: 'PersonalDetails',
+    },
+    {
+      title: 'Family & Friends',
+      icon: 'people-outline',
+      screen: 'FamilyAndFriends',
+    },
+    {
+      title: 'Address Management',
+      icon: 'location-outline',
+      screen: 'AddressManagement',
+    },
+    {
+      title: 'Security Settings',
+      icon: 'shield-outline',
+      screen: 'SecuritySettings',
+    },
+    {
+      title: 'Support',
+      icon: 'help-circle-outline',
+      screen: 'Support',
+    },
+    {
+      title: 'About',
+      icon: 'information-circle-outline',
+      screen: 'About',
+    },
+    {
+      title: 'Terms & Conditions',
+      icon: 'document-text-outline',
+      screen: 'Terms',
+    },
+  ];
+
+  const renderMenuItem = (item) => (
+    <TouchableOpacity
+      key={item.title}
+      style={styles.menuItem}
+      onPress={() => navigation.navigate(item.screen)}
+    >
+      <View style={styles.menuItemLeft}>
+        <Ionicons name={item.icon} size={24} color="#333" style={styles.menuIcon} />
+        <Text style={styles.menuText}>{item.title}</Text>
+        {item.badge && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{item.badge}</Text>
+          </View>
+        )}
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#ccc" />
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.headerTitle}>Account</Text>
-      
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.profile}>
-          {user?.profilePicture ? (
-            <Image 
-              source={{ uri: user.profilePicture }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={styles.initialsAvatar}>
-              <Text style={styles.initialsText}>{getUserInitials()}</Text>
+    <ScrollView style={styles.container}>
+      {/* Profile Section */}
+      <View style={styles.profileSection}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </Text>
             </View>
-          )}
-          <Text style={styles.name}>{user?.name || 'User'}</Text>
-          <Text style={styles.email}>{user?.email || ''}</Text>
-          <Text style={styles.phone}>{user?.phone || ''}</Text>
         </View>
+        <Text style={styles.userName}>{user?.name || 'User'}</Text>
+        <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
+        
+        {/* Patient Badge */}
+        <View style={styles.roleBadge}>
+          <Ionicons 
+            name="person" 
+            size={16} 
+            color="#fff" 
+            style={styles.roleBadgeIcon}
+          />
+          <Text style={styles.roleBadgeText}>Patient</Text>
+        </View>
+      </View>
 
+      {/* Menu Items */}
         <View style={styles.section}>
-          <MenuItem
-            icon={<Ionicons name="person-outline" size={24} color="#7E3AF2" />}
-            title="Personal details"
-            onPress={() => navigation.navigate('PersonalDetails')}
-          />
-          <MenuItem
-            icon={<Ionicons name="people-outline" size={24} color="#7E3AF2" />}
-            title="Family and friends"
-            onPress={() => navigation.navigate('FamilyAndFriends')}
-          />
-          <MenuItem
-            icon={<Ionicons name="location-outline" size={24} color="#7E3AF2" />}
-            title="Address management"
-            onPress={() => navigation.navigate('AddressManagement')}
-          />
-          <MenuItem
-            icon={<Ionicons name="gift-outline" size={24} color="#7E3AF2" />}
-            title="Referrals"
-            onPress={() => navigation.navigate('Referrals')}
-          />
+        <Text style={styles.sectionTitle}>Account Settings</Text>
+        <View style={styles.menuContainer}>
+          {menuItems.map(renderMenuItem)}
         </View>
+      </View>
 
-        <Text style={styles.sectionTitle}>Settings</Text>
-
-        <View style={styles.section}>
-          <MenuItem
-            icon={<Ionicons name="notifications-outline" size={24} color="#0084FF" />}
-            title="Push notifications"
-            showSwitch={true}
-            isEnabled={pushEnabled}
-            onToggle={setPushEnabled}
-          />
-          <MenuItem
-            icon={<Ionicons name="shield-checkmark-outline" size={24} color="#0084FF" />}
-            title="Security settings"
-            onPress={() => navigation.navigate('SecuritySettings')}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <MenuItem
-            icon={<Ionicons name="help-circle-outline" size={24} color="#00B383" />}
-            title="Support"
-            onPress={() => navigation.navigate('Support')}
-          />
-          <MenuItem
-            icon={<Ionicons name="information-circle-outline" size={24} color="#00B383" />}
-            title="About Pharmarun"
-            onPress={() => navigation.navigate('About')}
-          />
-          <MenuItem
-            icon={<Ionicons name="document-text-outline" size={24} color="#00B383" />}
-            title="Terms and conditions"
-            onPress={() => navigation.navigate('Terms')}
-          />
-        </View>
+      {/* Demo Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Demo & Testing</Text>
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('UserManagementExample')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="code-outline" size={24} color="#333" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Integration Example</Text>
+              <View style={[styles.badge, { backgroundColor: '#ff9800' }]}>
+                <Text style={styles.badgeText}>Demo</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          disabled={loading}>
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-          <Text style={styles.logoutText}>Log out</Text>
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('ConsultationHome')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="calendar-outline" size={24} color="#333" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Book Test Appointment</Text>
+              <View style={[styles.badge, { backgroundColor: '#4caf50' }]}>
+                <Text style={styles.badgeText}>Test</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Logout */}
+      <View style={styles.section}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="#fff" />
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-        
-        {/* Add some bottom padding for better scrolling experience */}
-        <View style={styles.bottomPadding} />
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          PMS Mobile v1.0.0 • Patient Portal
+        </Text>
+      </View>
       </ScrollView>
-    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  profileSection: {
     backgroundColor: '#fff',
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    padding: 16,
-  },
-  profile: {
     alignItems: 'center',
-    padding: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  avatarContainer: {
+    marginBottom: 16,
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginBottom: 16,
-  },
-  initialsAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#7E3AF2',
+    backgroundColor: '#007bff',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: '#666',
     marginBottom: 16,
   },
-  initialsText: {
-    color: 'white',
-    fontSize: 30,
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#007bff',
+  },
+  roleBadgeIcon: {
+    marginRight: 6,
+  },
+  roleBadgeText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  email: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 4,
-  },
-  phone: {
-    fontSize: 16,
-    color: '#666',
   },
   section: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    backgroundColor: '#fff',
+    marginBottom: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    color: '#666',
-    padding: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+  },
+  menuContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    flex: 1,
   },
-  menuItemText: {
+  menuIcon: {
+    marginRight: 16,
+  },
+  menuText: {
     fontSize: 16,
-    color: '#000',
+    color: '#333',
+    flex: 1,
+  },
+  badge: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    gap: 12,
+    justifyContent: 'center',
+    backgroundColor: '#dc3545',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
   },
   logoutText: {
+    color: '#fff',
     fontSize: 16,
-    color: '#FF3B30',
+    fontWeight: 'bold',
   },
-  bottomPadding: {
-    height: 20,
+  footer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
   },
 });
 

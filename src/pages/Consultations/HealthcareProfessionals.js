@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { providers } from '../../data/providers';
 import HealthcareProviderCard from '../../components/cards/HealthcareProviderCard';
+import { userData } from '../../data/dummyUser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import AppointmentService from '../../services/AppointmentService';
 
 const SORT_OPTIONS = [
   { id: 'rating', label: 'Highest Rating' },
@@ -41,35 +45,33 @@ const HealthcareProfessionals = ({ route, navigation }) => {
       : providers.doctors.map(p => p.currentInstitution)
   )];
 
-  const filteredAndSortedProviders = useCallback(() => {
-    let filtered = type === 'pharmacist' ? providers.pharmacists : providers.doctors;
-
-    // Apply search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(provider => 
-        provider.name.toLowerCase().includes(query) ||
-        provider.specialty.toLowerCase().includes(query) ||
-        provider.specializations.some(spec => spec.toLowerCase().includes(query))
+  const filteredProviders = useCallback(() => {
+    let providerList = type === 'pharmacist' ? providers.pharmacists : providers.doctors;
+    
+    // Filter by search query
+    if (searchQuery) {
+      providerList = providerList.filter(provider =>
+        provider.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        provider.specialty.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Apply specialty filters
+    
+    // Filter by specialties
     if (selectedSpecialties.length > 0) {
-      filtered = filtered.filter(provider =>
+      providerList = providerList.filter(provider =>
         provider.specializations.some(spec => selectedSpecialties.includes(spec))
       );
     }
-
-    // Apply institution filters
+    
+    // Filter by institutions
     if (selectedInstitutions.length > 0) {
-      filtered = filtered.filter(provider =>
+      providerList = providerList.filter(provider =>
         selectedInstitutions.includes(provider.currentInstitution)
       );
     }
-
-    // Apply sorting
-    return filtered.sort((a, b) => {
+    
+    // Sort providers
+    providerList.sort((a, b) => {
       switch (sortBy) {
         case 'rating':
           return b.rating - a.rating;
@@ -85,6 +87,8 @@ const HealthcareProfessionals = ({ route, navigation }) => {
           return 0;
       }
     });
+    
+    return providerList;
   }, [type, searchQuery, selectedSpecialties, selectedInstitutions, sortBy]);
 
   const FiltersModal = () => (
@@ -246,16 +250,14 @@ const HealthcareProfessionals = ({ route, navigation }) => {
       </View>
 
       <ScrollView style={styles.content}>
-        {filteredAndSortedProviders().map((provider) => (
+        {filteredProviders().map((provider) => (
           <HealthcareProviderCard
             key={provider.id}
             provider={{ ...provider, type }}
-            onPress={() => navigation.navigate('ProfessionalProfile', {
-              provider: { ...provider, type }
-            })}
+            onPress={() => navigation.navigate('ProfessionalProfile', { provider: { ...provider, type } })}
           />
         ))}
-        {filteredAndSortedProviders().length === 0 && (
+        {filteredProviders().length === 0 && (
           <View style={styles.noResults}>
             <Text style={styles.noResultsText}>No providers found</Text>
             <Text style={styles.noResultsSubtext}>Try adjusting your search or filters</Text>

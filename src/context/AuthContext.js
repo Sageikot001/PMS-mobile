@@ -1,164 +1,259 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import * as AuthService from '../services/AuthService';
-import { ActivityIndicator, View } from 'react-native';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userData } from '../data/dummyUser';
+import AppointmentService from '../services/AppointmentService';
 
-// Create the Auth Context
-const AuthContext = createContext();
+const AuthContext = createContext({});
 
-// Auth Provider component
+const AUTH_STORAGE_KEY = '@auth_token';
+const USER_STORAGE_KEY = '@user_data';
+
 export const AuthProvider = ({ children }) => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [authToken, setAuthToken] = useState(null);
 
-  // Initial check for existing auth
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        setLoading(true);
-        const isAuth = await AuthService.isAuthenticated();
-        
-        if (isAuth) {
-          // Get user data from storage
-          const userData = await AuthService.getCurrentUser();
-          if (userData) {
-            setUser(userData);
-          } else {
-            // Get fresh user data if available in storage but no user object
-            try {
-              const freshUserData = await AuthService.getUserProfile();
-              setUser(freshUserData);
-            } catch (profileError) {
-              // If we can't get fresh data, log the user out
-              await AuthService.logout();
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Auth initialization error:', e);
-        setError('Failed to initialize authentication');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
+    checkAuthStatus();
   }, []);
 
-  // Login function
+  // Initialize appointment service when user changes
+  useEffect(() => {
+    if (user) {
+      initializeAppointmentService();
+    }
+  }, [user]);
+
+  const initializeAppointmentService = async () => {
+    try {
+      await AppointmentService.initialize(user, 'patient');
+      console.log(`📅 Appointment service initialized for patient:`, user.name);
+    } catch (error) {
+      console.error('Error initializing appointment service:', error);
+    }
+  };
+
+  const checkAuthStatus = async () => {
+    try {
+      const [token, storedUser] = await Promise.all([
+        AsyncStorage.getItem(AUTH_STORAGE_KEY),
+        AsyncStorage.getItem(USER_STORAGE_KEY),
+      ]);
+
+      if (token && storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        
+        setAuthToken(token);
+        setUser(parsedUser);
+        setIsLoggedIn(true);
+      } else {
+        // Auto-login with demo patient user for testing
+        await loginAsPatient();
+      }
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const login = async (email, password) => {
     try {
       setLoading(true);
-      setError(null);
-      const result = await AuthService.login(email, password);
-      setUser(result.user);
-      return result;
-    } catch (e) {
-      setError(e.message);
-      throw e;
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check credentials - only allow patient login
+      let loginUser = null;
+      
+      if (email === userData.patient.email) {
+        loginUser = userData.patient;
+      } else {
+        throw new Error('Invalid credentials');
+      }
+
+      const token = `demo_token_${Date.now()}`;
+      
+      // Store auth data
+      await Promise.all([
+        AsyncStorage.setItem(AUTH_STORAGE_KEY, token),
+        AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(loginUser)),
+      ]);
+
+      setAuthToken(token);
+      setUser(loginUser);
+      setIsLoggedIn(true);
+
+      return { success: true, user: loginUser };
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // Register function
-  const register = async (userData) => {
+  const loginAsPatient = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const result = await AuthService.register(userData);
-      return result;
-    } catch (e) {
-      setError(e.message);
-      throw e;
-    } finally {
-      setLoading(false);
+      const patientUser = userData.patient;
+      const token = `demo_token_patient_${Date.now()}`;
+      
+      await Promise.all([
+        AsyncStorage.setItem(AUTH_STORAGE_KEY, token),
+        AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(patientUser)),
+      ]);
+
+      setAuthToken(token);
+      setUser(patientUser);
+      setIsLoggedIn(true);
+
+      console.log('🔐 Auto-logged in as Sageikot (Patient)');
+      return { success: true, user: patientUser };
+    } catch (error) {
+      console.error('Error logging in as patient:', error);
+      throw error;
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
       setLoading(true);
-      await AuthService.logout();
+      
+      await Promise.all([
+        AsyncStorage.removeItem(AUTH_STORAGE_KEY),
+        AsyncStorage.removeItem(USER_STORAGE_KEY),
+      ]);
+
+      setAuthToken(null);
       setUser(null);
-    } catch (e) {
-      console.error('Logout error:', e);
-      setError(e.message);
+      setIsLoggedIn(false);
+
+      console.log('🔐 User logged out');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // Get profile data
-  const refreshProfile = async () => {
-    if (!user) return;
-    
+  // Force complete logout - clears everything and returns to auth
+  const forceLogout = async () => {
     try {
       setLoading(true);
-      const userData = await AuthService.getUserProfile();
-      setUser(userData);
-      return userData;
-    } catch (e) {
-      console.error('Profile refresh error:', e);
-      setError(e.message);
+      
+      // Clear all possible auth storage keys
+      await Promise.all([
+        AsyncStorage.removeItem(AUTH_STORAGE_KEY),
+        AsyncStorage.removeItem(USER_STORAGE_KEY),
+        AsyncStorage.removeItem('@current_role'), // Doctor role key
+      ]);
+
+      // Reset all auth state
+      setAuthToken(null);
+      setUser(null);
+      setIsLoggedIn(false);
+
+      console.log('🔐 Complete logout - returning to auth flow');
+    } catch (error) {
+      console.error('Force logout error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update profile data
-  const updateProfile = async (profileData) => {
+  const register = async (userData) => {
     try {
       setLoading(true);
-      const updatedUser = await AuthService.updateUserProfile(profileData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // For demo, automatically log in the new user as a patient
+      const newUser = {
+        ...userData,
+        _id: `user_${Date.now()}`,
+        id: `user_${Date.now()}`,
+        roles: ['PATIENT'],
+        userType: 'patient',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const token = `demo_token_${Date.now()}`;
+      
+      await Promise.all([
+        AsyncStorage.setItem(AUTH_STORAGE_KEY, token),
+        AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser)),
+      ]);
+
+      setAuthToken(token);
+      setUser(newUser);
+      setIsLoggedIn(true);
+
+      return { success: true, user: newUser };
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfile = async (updates) => {
+    try {
+      setLoading(true);
+      
+      const updatedUser = {
+        ...user,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       setUser(updatedUser);
-      return updatedUser;
-    } catch (e) {
-      console.error('Profile update error:', e);
-      setError(e.message);
-      throw e;
+
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      console.error('Profile update error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // The context value that will be provided
-  const authContextValue = {
+  const contextValue = {
+    // Auth state
+    isLoggedIn,
     user,
     loading,
-    error,
+    authToken,
+    
+    // Auth methods
     login,
-    register,
+    loginAsPatient,
     logout,
-    refreshProfile,
+    forceLogout,
+    register,
     updateProfile,
-    isLoggedIn: !!user,
+    
+    // User data
+    userData,
   };
 
-  // If we're in the initial loading state, show a loader
-  if (loading && !user) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0066CC" />
-      </View>
-    );
-  }
-
   return (
-    <AuthContext.Provider value={authContextValue}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-export default AuthContext; 
+}; 

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   TextInput,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -14,6 +15,7 @@ import WeightInput from '../../../components/WeightInput';
 import HeightInput from '../../../components/HeightInput';
 import ActivityLevelSelector from '../../../components/ActivityLevelSelector';
 import CalorieResults from '../../../components/CalorieResults';
+import HealthDataService, { WELLNESS_CALCULATION_TYPES } from '../../../services/HealthDataService';
 
 const CalorieCalculator = () => {
   const navigation = useNavigation();
@@ -27,6 +29,8 @@ const CalorieCalculator = () => {
     weightUnit: 'Kg',
     heightUnit: 'Cm'
   });
+  const [calculationResults, setCalculationResults] = useState(null);
+  const [isSaved, setIsSaved] = useState(false);
 
   const renderWelcomeScreen = () => (
     <View style={styles.container}>
@@ -206,9 +210,24 @@ const CalorieCalculator = () => {
         Depending on your goals, here are the different calorie intake per day to guide you
       </Text>
 
-      <CalorieResults userData={userData} />
+      <CalorieResults 
+        userData={userData} 
+        onResultsCalculated={(results) => setCalculationResults(results)}
+      />
       
-      <View style={styles.consultSection}>
+      {!isSaved && calculationResults && (
+        <TouchableOpacity style={styles.saveButton} onPress={saveCalorieCalculation}>
+          <Text style={styles.saveButtonText}>💾 Save to Health Profile</Text>
+        </TouchableOpacity>
+      )}
+
+      {isSaved && (
+        <View style={styles.savedIndicator}>
+          <Text style={styles.savedText}>✅ Saved to your health profile</Text>
+        </View>
+      )}
+      
+      <TouchableOpacity style={styles.consultCard}>
         <View style={styles.consultContent}>
           {/* <Image
             source={ ('../../../../assets/icons/pharmacist-avatar.png')}
@@ -227,9 +246,60 @@ const CalorieCalculator = () => {
         >
           <Text style={styles.consultButtonText}>Book a consultation</Text>
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     </View>
   );
+
+  const saveCalorieCalculation = async () => {
+    if (!calculationResults) {
+      Alert.alert('Error', 'No calculation results to save');
+      return;
+    }
+
+    try {
+      const inputData = {
+        weight: userData.weight,
+        weightUnit: userData.weightUnit,
+        height: userData.height,
+        heightUnit: userData.heightUnit,
+        age: userData.age,
+        gender: userData.gender,
+        activityLevel: userData.activityLevel,
+      };
+
+      const results = {
+        ...calculationResults,
+        calculatedAt: new Date().toISOString(),
+      };
+
+      const calculationData = {
+        input: inputData,
+        results: results,
+      };
+
+      await HealthDataService.saveWellnessCalculation(
+        WELLNESS_CALCULATION_TYPES.CALORIE, 
+        calculationData
+      );
+
+      setIsSaved(true);
+      
+      Alert.alert(
+        'Success',
+        'Calorie calculation saved successfully!\n\nYour weight and other health metrics have also been updated in your profile.',
+        [
+          { text: 'OK', onPress: () => {} },
+          { 
+            text: 'View Health Profile', 
+            onPress: () => navigation.navigate('MyHealth') 
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving calorie calculation:', error);
+      Alert.alert('Error', 'Failed to save calculation. Please try again.');
+    }
+  };
 
   const renderStep = () => {
     switch (currentStep) {
@@ -396,6 +466,36 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#ccc',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  savedIndicator: {
+    backgroundColor: '#e8f5e9',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  savedText: {
+    color: '#2e7d32',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  consultCard: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 32,
   },
 });
 

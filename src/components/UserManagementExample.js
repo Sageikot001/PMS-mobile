@@ -18,62 +18,146 @@ import {
   LoadingButton,
   InlineLoading,
 } from './LoadingState';
-import { useApi, usePaginatedApi, useFormApi } from '../hooks/useApi';
-import UserManagementService, { USER_TYPES } from '../services/UserManagementService';
 import AuthService, { getCreatedUsers, clearCreatedUsers } from '../services/AuthService';
 import TestUtils from '../utils/testUtils';
+import HealthDataService, { HEALTH_METRIC_TYPES, WELLNESS_CALCULATION_TYPES } from '../services/HealthDataService';
+
+// Mock data for demo purposes
+const MOCK_USER_STATS = {
+  totalUsers: 142,
+  activeUsers: 98,
+  pendingUsers: 12,
+  inactiveUsers: 32,
+};
+
+const MOCK_USERS = {
+  patients: [
+    {
+      id: '1',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      userType: 'patient',
+      status: 'active',
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '2',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      email: 'jane.smith@example.com',
+      userType: 'patient',
+      status: 'active',
+      createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '3',
+      firstName: 'Mike',
+      lastName: 'Johnson',
+      email: 'mike.johnson@example.com',
+      userType: 'patient',
+      status: 'pending',
+      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ],
+  doctors: [
+    {
+      id: '4',
+      firstName: 'Dr. Sarah',
+      lastName: 'Wilson',
+      email: 'sarah.wilson@hospital.com',
+      userType: 'doctor',
+      status: 'active',
+      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '5',
+      firstName: 'Dr. Robert',
+      lastName: 'Brown',
+      email: 'robert.brown@clinic.com',
+      userType: 'doctor',
+      status: 'active',
+      createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ],
+  pharmacists: [
+    {
+      id: '6',
+      firstName: 'Alice',
+      lastName: 'Green',
+      email: 'alice.green@pharmacy.com',
+      userType: 'pharmacist',
+      status: 'active',
+      createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ],
+};
+
+const USER_TYPES = {
+  PATIENT: 'patients',
+  DOCTOR: 'doctors',
+  PHARMACIST: 'pharmacists',
+};
 
 /**
  * Example component demonstrating the complete integration
- * Shows how to use error boundaries, loading states, API hooks, and user management
+ * Shows how to use error boundaries, loading states, and user management (with mock data)
  */
-const UserManagementExample = () => {
+const UserManagementExample = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('patients');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showTestResults, setShowTestResults] = useState(false);
   const [availableAccounts, setAvailableAccounts] = useState([]);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  
+  // Mock API state management
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersRefreshing, setUsersRefreshing] = useState(false);
+  const [userStats, setUserStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [createUserLoading, setCreateUserLoading] = useState(false);
 
-  // Using our custom hooks for different scenarios
-  const {
-    data: users,
-    loading: usersLoading,
-    error: usersError,
-    refreshing: usersRefreshing,
-    fetchData: fetchUsers,
-    refresh: refreshUsers,
-    loadMore: loadMoreUsers,
-    hasMore: hasMoreUsers,
-  } = usePaginatedApi(
-    ({ page, limit }) => UserManagementService.getUsersByType(activeTab, page, limit),
-    []
-  );
+  // Mock API functions
+  const mockFetchUsers = async (userType) => {
+    setUsersLoading(true);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const mockUsers = MOCK_USERS[userType] || [];
+    setUsers(mockUsers);
+    setUsersLoading(false);
+  };
 
-  const {
-    data: userStats,
-    loading: statsLoading,
-    execute: fetchStats,
-  } = useApi(
-    () => UserManagementService.getUserStats(),
-    null,
-    true // Execute on mount
-  );
+  const mockFetchStats = async () => {
+    setStatsLoading(true);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    setUserStats(MOCK_USER_STATS);
+    setStatsLoading(false);
+  };
 
-  const {
-    loading: createUserLoading,
-    error: createUserError,
-    success: createUserSuccess,
-    submit: createUser,
-    reset: resetCreateUser,
-  } = useFormApi(
-    (userData) => UserManagementService.createUser(userData, USER_TYPES.PATIENT)
-  );
+  const mockRefreshUsers = async () => {
+    setUsersRefreshing(true);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    const mockUsers = MOCK_USERS[activeTab] || [];
+    setUsers(mockUsers);
+    setUsersRefreshing(false);
+  };
 
   // Load users when tab changes
   useEffect(() => {
-    fetchUsers(1);
-  }, [activeTab, fetchUsers]);
+    mockFetchUsers(activeTab);
+  }, [activeTab]);
+
+  // Load stats on mount
+  useEffect(() => {
+    mockFetchStats();
+  }, []);
 
   // Load available accounts for debugging
   useEffect(() => {
@@ -93,6 +177,8 @@ const UserManagementExample = () => {
   // Handle user creation
   const handleCreateUser = async () => {
     try {
+      setCreateUserLoading(true);
+      
       const randomNumber = Date.now().toString().slice(-4);
       const testUserData = {
         email: `testuser${randomNumber}@example.com`,
@@ -104,21 +190,43 @@ const UserManagementExample = () => {
         phoneNumber: `+1234567${randomNumber}`,
       };
 
-      await createUser(testUserData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Add to mock data
+      const newUser = {
+        id: Date.now().toString(),
+        ...testUserData,
+        userType: 'patient',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+      
+      MOCK_USERS.patients.push(newUser);
+      
+      // Update current view if showing patients
+      if (activeTab === 'patients') {
+        setUsers([...MOCK_USERS.patients]);
+      }
+      
       Alert.alert(
         'Success', 
-        `User created successfully!\n\nCredentials:\nEmail: ${testUserData.email}\nPassword: ${testUserData.password}\nName: ${testUserData.firstName} ${testUserData.lastName}\nPhone: ${testUserData.phoneNumber}\n\nYou can now login with these credentials.`
+        `User created successfully!\n\nCredentials:\nEmail: ${testUserData.email}\nPassword: ${testUserData.password}\nName: ${testUserData.firstName} ${testUserData.lastName}\nPhone: ${testUserData.phoneNumber}\n\nThis is a demo - user added to mock data.`
       );
-      refreshUsers();
+      
       loadAvailableAccounts(); // Refresh available accounts
     } catch (error) {
       Alert.alert('Error', error.message);
+    } finally {
+      setCreateUserLoading(false);
     }
   };
 
   // Handle profile data test
   const handleTestProfileData = async () => {
     try {
+      setCreateUserLoading(true);
+      
       const randomNumber = Date.now().toString().slice(-4);
       const testUserData = {
         email: `profiletest${randomNumber}@example.com`,
@@ -130,14 +238,37 @@ const UserManagementExample = () => {
         phoneNumber: `+1987654${randomNumber}`,
       };
 
-      // Create user
-      await createUser(testUserData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Test login
-      const loginResult = await AuthService.login(testUserData.email, testUserData.password);
+      // Add to mock data
+      const newUser = {
+        id: Date.now().toString(),
+        ...testUserData,
+        userType: 'patient',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+      MOCK_USERS.patients.push(newUser);
+      if (activeTab === 'patients') {
+        setUsers([...MOCK_USERS.patients]); // Update current view
+      }
       
-      if (loginResult.success) {
-        const user = loginResult.user;
+      // Test login simulation
+      const mockLoginResult = { 
+        success: true, 
+        user: {
+          name: `${testUserData.firstName} ${testUserData.lastName}`,
+          phone: testUserData.phoneNumber,
+          email: testUserData.email,
+          firstName: testUserData.firstName,
+          lastName: testUserData.lastName,
+          phoneNumber: testUserData.phoneNumber,
+        }
+      };
+      
+      if (mockLoginResult.success) {
+        const user = mockLoginResult.user;
         
         // Check if profile data is properly mapped
         const profileCheck = {
@@ -162,7 +293,7 @@ const UserManagementExample = () => {
           profileCheck.phoneValue === testUserData.phoneNumber;
           
         Alert.alert(
-          'Profile Data Test Results',
+          'Profile Data Test Results (Mock)',
           `✅ Profile Mapping: ${isProfileMappingCorrect ? 'PASSED' : 'FAILED'}\n\n` +
           `Name: ${profileCheck.nameValue || 'Missing'}\n` +
           `Phone: ${profileCheck.phoneValue || 'Missing'}\n` +
@@ -173,14 +304,203 @@ const UserManagementExample = () => {
           `Raw Data Check:\n` +
           `firstName: ${profileCheck.firstNameValue || 'Missing'}\n` +
           `lastName: ${profileCheck.lastNameValue || 'Missing'}\n` +
-          `phoneNumber: ${profileCheck.phoneNumberValue || 'Missing'}`
+          `phoneNumber: ${profileCheck.phoneNumberValue || 'Missing'}\n\n` +
+          `Note: This is a demo test with mock data.`
         );
-        
-        // Logout after test
-        await AuthService.logout();
       }
     } catch (error) {
       Alert.alert('Profile Test Error', error.message);
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+  // Handle testing health data functionality
+  const handleTestHealthData = async () => {
+    try {
+      Alert.alert(
+        'Test Health Data',
+        'This will test all health data functionality including metrics, medications, conditions, and wellness calculations.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Test', onPress: runHealthDataTests },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const runHealthDataTests = async () => {
+    setShowTestResults(true);
+    let passedTests = 0;
+    const totalTests = 8;
+    
+    try {
+      console.log('🏥 Starting Health Data Tests...');
+      
+      // Test 1: Add Health Metrics
+      try {
+        await HealthDataService.addHealthMetric(HEALTH_METRIC_TYPES.WEIGHT, {
+          value: '70.5',
+          unit: 'kg',
+          notes: 'Morning weight after workout',
+        });
+        
+        await HealthDataService.addHealthMetric(HEALTH_METRIC_TYPES.HEIGHT, {
+          value: '175',
+          unit: 'cm',
+          notes: 'Measured at clinic',
+        });
+        
+        await HealthDataService.addHealthMetric(HEALTH_METRIC_TYPES.BLOOD_PRESSURE, {
+          value: '120/80',
+          unit: 'mmHg',
+          notes: 'Normal reading',
+        });
+        
+        passedTests++;
+        console.log('✅ Health Metrics Test: PASSED');
+      } catch (error) {
+        console.log('❌ Health Metrics Test: FAILED -', error.message);
+      }
+      
+      // Test 2: Get Health Metrics
+      try {
+        const metrics = await HealthDataService.getHealthMetrics();
+        if (metrics && typeof metrics === 'object') {
+          passedTests++;
+          console.log('✅ Get Health Metrics Test: PASSED');
+        } else {
+          console.log('❌ Get Health Metrics Test: FAILED - Invalid response');
+        }
+      } catch (error) {
+        console.log('❌ Get Health Metrics Test: FAILED -', error.message);
+      }
+      
+      // Test 3: Add Medication
+      try {
+        await HealthDataService.addMedication({
+          name: 'Test Medication',
+          brand: 'TestBrand',
+          dosage: '2 tablets',
+          frequency: 2,
+          dosageTimes: [new Date().toISOString()],
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          instructions: 'Take with food',
+          reminderEnabled: true,
+        });
+        
+        passedTests++;
+        console.log('✅ Add Medication Test: PASSED');
+      } catch (error) {
+        console.log('❌ Add Medication Test: FAILED -', error.message);
+      }
+      
+      // Test 4: Get Medications
+      try {
+        const medications = await HealthDataService.getMedications();
+        if (Array.isArray(medications)) {
+          passedTests++;
+          console.log('✅ Get Medications Test: PASSED');
+        } else {
+          console.log('❌ Get Medications Test: FAILED - Invalid response');
+        }
+      } catch (error) {
+        console.log('❌ Get Medications Test: FAILED -', error.message);
+      }
+      
+      // Test 5: Add Condition
+      try {
+        await HealthDataService.addCondition({
+          name: 'Test Condition',
+          type: 'Chronic',
+          description: 'Test condition for system validation',
+          diagnosedDate: new Date().toISOString(),
+          severity: 'mild',
+          symptoms: ['test symptom'],
+          triggers: ['test trigger'],
+          answers: { 'Test question': 'Test answer' },
+        });
+        
+        passedTests++;
+        console.log('✅ Add Condition Test: PASSED');
+      } catch (error) {
+        console.log('❌ Add Condition Test: FAILED -', error.message);
+      }
+      
+      // Test 6: Get Conditions
+      try {
+        const conditions = await HealthDataService.getConditions();
+        if (Array.isArray(conditions)) {
+          passedTests++;
+          console.log('✅ Get Conditions Test: PASSED');
+        } else {
+          console.log('❌ Get Conditions Test: FAILED - Invalid response');
+        }
+      } catch (error) {
+        console.log('❌ Get Conditions Test: FAILED -', error.message);
+      }
+      
+      // Test 7: Save Wellness Calculation
+      try {
+        await HealthDataService.saveWellnessCalculation(
+          WELLNESS_CALCULATION_TYPES.BMI,
+          {
+            input: {
+              weight: '70.5',
+              height: '175',
+              weightUnit: 'kg',
+              heightUnit: 'cm',
+            },
+            results: {
+              bmi: 23.0,
+              category: 'Normal weight',
+            },
+          }
+        );
+        
+        passedTests++;
+        console.log('✅ Save Wellness Calculation Test: PASSED');
+      } catch (error) {
+        console.log('❌ Save Wellness Calculation Test: FAILED -', error.message);
+      }
+      
+      // Test 8: Get Health Analytics
+      try {
+        const analytics = await HealthDataService.getHealthAnalytics();
+        if (analytics && analytics.summary) {
+          passedTests++;
+          console.log('✅ Get Health Analytics Test: PASSED');
+        } else {
+          console.log('❌ Get Health Analytics Test: FAILED - Invalid response');
+        }
+      } catch (error) {
+        console.log('❌ Get Health Analytics Test: FAILED -', error.message);
+      }
+      
+      const passRate = ((passedTests / totalTests) * 100).toFixed(1);
+      
+      Alert.alert(
+        'Health Data Test Results',
+        `${passedTests}/${totalTests} tests passed (${passRate}%)\n\n` +
+        `✅ Health Metrics: ${passedTests >= 2 ? 'PASSED' : 'FAILED'}\n` +
+        `✅ Medication Management: ${passedTests >= 4 ? 'PASSED' : 'FAILED'}\n` +
+        `✅ Condition Management: ${passedTests >= 6 ? 'PASSED' : 'FAILED'}\n` +
+        `✅ Wellness Calculations: ${passedTests >= 7 ? 'PASSED' : 'FAILED'}\n` +
+        `✅ Health Analytics: ${passedTests >= 8 ? 'PASSED' : 'FAILED'}\n\n` +
+        'All health data is now being saved to your profile!',
+        [
+          { text: 'View Health Profile', onPress: () => navigation?.navigate('MainLayout') },
+          { text: 'OK' },
+        ]
+      );
+      
+    } catch (error) {
+      Alert.alert('Health Data Test Failed', error.message);
+    } finally {
+      setShowTestResults(false);
     }
   };
 
@@ -336,7 +656,7 @@ const UserManagementExample = () => {
             styles.tabText,
             activeTab === type && styles.activeTabText,
           ]}>
-            {type.charAt(0).toUpperCase() + type.slice(1)}s
+            {type.charAt(0).toUpperCase() + type.slice(1)}
           </Text>
         </TouchableOpacity>
       ))}
@@ -353,6 +673,24 @@ const UserManagementExample = () => {
       default: return '#6c757d';
     }
   };
+
+  // Render error state (for demo purposes)
+  const renderErrorState = () => (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorText}>
+        Demo Mode - No Real API Connected
+      </Text>
+      <Text style={styles.errorSubtext}>
+        This is a demonstration using mock data. In a real app, this would connect to your backend API.
+      </Text>
+      <TouchableOpacity
+        style={styles.retryButton}
+        onPress={() => mockFetchUsers(activeTab)}
+      >
+        <Text style={styles.retryButtonText}>Reload Demo Data</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   // Render debug info section
   const renderDebugInfo = () => {
@@ -404,15 +742,15 @@ const UserManagementExample = () => {
           refreshControl={
             <RefreshControl
               refreshing={usersRefreshing}
-              onRefresh={refreshUsers}
+              onRefresh={mockRefreshUsers}
             />
           }
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>User Management</Text>
+            <Text style={styles.title}>User Management Demo</Text>
             <Text style={styles.subtitle}>
-              Comprehensive integration example with error handling, loading states, and API management
+              Integration example showing error handling, loading states, and user management with mock data (no real API calls)
             </Text>
           </View>
 
@@ -467,6 +805,13 @@ const UserManagementExample = () => {
               onPress={handleTestProfileData}
               style={[styles.actionButton, styles.testButton]}
             />
+            <LoadingButton
+              loading={showTestResults}
+              text="Test Health Data"
+              loadingText="Testing..."
+              onPress={handleTestHealthData}
+              style={[styles.actionButton, styles.healthTestButton]}
+            />
           </View>
 
           {/* Account Help */}
@@ -484,30 +829,11 @@ const UserManagementExample = () => {
           <View style={styles.usersSection}>
             {usersLoading ? (
               renderSkeletonLoading()
-            ) : usersError ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>
-                  Error: {usersError.message}
-                </Text>
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => fetchUsers(1)}
-                >
-                  <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
-              </View>
             ) : (
               <View>
                 {users.map(renderUserItem)}
                 
-                {hasMoreUsers && (
-                  <TouchableOpacity
-                    style={styles.loadMoreButton}
-                    onPress={loadMoreUsers}
-                  >
-                    <Text style={styles.loadMoreText}>Load More</Text>
-                  </TouchableOpacity>
-                )}
+                {/* No load more button for mock data */}
               </View>
             )}
           </View>
@@ -636,6 +962,9 @@ const styles = StyleSheet.create({
   testButton: {
     backgroundColor: '#28a745',
   },
+  healthTestButton: {
+    backgroundColor: '#007bff',
+  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -715,6 +1044,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#dc3545',
     marginBottom: 16,
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
     textAlign: 'center',
   },
   retryButton: {

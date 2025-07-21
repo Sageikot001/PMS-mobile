@@ -254,6 +254,45 @@ export const providers = {
   doctors: [
     {
       id: '1',
+      name: 'Dr. John Smith',
+      specialty: 'Cardiology',
+      experience: 15,
+      rating: 4.9,
+      consultations: 2000,
+      hourlyRate: 15000,
+      about: 'Board-certified cardiologist with 15 years of experience specializing in preventive cardiology and heart disease management. Fellowship trained at Johns Hopkins with expertise in cardiovascular interventions.',
+      specializations: [
+        'Preventive Cardiology',
+        'Heart Disease Management',
+        'Hypertension Treatment', 
+        'Cardiac Rehabilitation',
+        'Cardiovascular Interventions'
+      ],
+      education: [
+        {
+          institution: 'University of Lagos',
+          degree: 'Doctor of Medicine (MD)',
+          year: '2008'
+        },
+        {
+          institution: 'Johns Hopkins University',
+          degree: 'Fellowship in Cardiology',
+          year: '2013'
+        }
+      ],
+      languages: ['English'],
+      currentInstitution: 'Lagos University Teaching Hospital',
+      institutionAddress: '1 Idi-Araba Road, Surulere, Lagos',
+      availability: {
+        monday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+        tuesday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+        wednesday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+        thursday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+        friday: ['09:00', '10:00', '11:00', '14:00', '15:00']
+      }
+    },
+    {
+      id: '2',
       name: 'Dr. Michael Chen',
       specialty: 'General Practitioner',
       experience: 12,
@@ -286,42 +325,6 @@ export const providers = {
         monday: ['09:00', '10:00', '11:00', '14:00', '15:00'],
         tuesday: ['09:00', '10:00', '11:00', '14:00', '15:00'],
         thursday: ['09:00', '10:00', '11:00', '14:00', '15:00']
-      }
-    },
-    {
-      id: '2',
-      name: 'Dr. Olayinka Adebayo',
-      specialty: 'Cardiologist',
-      experience: 15,
-      rating: 4.9,
-      consultations: 1800,
-      hourlyRate: 12000,
-      about: 'Experienced cardiologist specializing in preventive cardiology and heart disease management.',
-      specializations: [
-        'Preventive Cardiology',
-        'Heart Disease',
-        'Hypertension Management',
-        'Cardiac Rehabilitation'
-      ],
-      education: [
-        {
-          institution: 'University of Lagos',
-          degree: 'MBBS',
-          year: '2008'
-        },
-        {
-          institution: 'London School of Cardiology',
-          degree: 'Cardiology Specialization',
-          year: '2013'
-        }
-      ],
-      languages: ['English', 'Yoruba'],
-      currentInstitution: 'Heart & Vascular Center',
-      institutionAddress: '234 Cardiology Lane',
-      availability: {
-        wednesday: ['09:00', '10:00', '11:00', '14:00', '15:00'],
-        thursday: ['09:00', '10:00', '11:00', '14:00', '15:00'],
-        friday: ['09:00', '10:00', '11:00', '14:00', '15:00']
       }
     },
     {

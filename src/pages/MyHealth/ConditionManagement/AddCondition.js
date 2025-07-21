@@ -8,9 +8,11 @@ import {
   ActivityIndicator,
   TextInput,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import HealthDataService from '../../../services/HealthDataService';
 
 const conditions = [
   { 
@@ -344,18 +346,84 @@ const AddCondition = () => {
     }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     console.log('Current step:', currentStep);
     console.log('Questions length:', selectedCondition?.questions.length);
     
     if (currentStep < selectedCondition?.questions.length) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Navigate to drug recommendations
-      navigation.navigate('ConditionDrugs', {
-        condition: selectedCondition,
-        answers: answers
-      });
+      // Save condition data to health service
+      try {
+        const conditionData = {
+          name: selectedCondition.name,
+          type: selectedCondition.type,
+          description: selectedCondition.description,
+          diagnosedDate: new Date().toISOString(), // Can be made configurable
+          severity: 'moderate', // Can be determined from answers
+          symptoms: [],
+          triggers: [],
+          medications: [],
+          doctorName: '',
+          treatment: '',
+          notes: `Condition added through app questionnaire on ${new Date().toLocaleDateString()}`,
+          answers: answers,
+        };
+
+        // Extract relevant information from answers
+        if (answers) {
+          Object.entries(answers).forEach(([question, answer]) => {
+            if (question.toLowerCase().includes('trigger')) {
+              conditionData.triggers.push(answer);
+            }
+            if (question.toLowerCase().includes('symptom')) {
+              conditionData.symptoms.push(answer);
+            }
+            if (question.toLowerCase().includes('medication') || question.toLowerCase().includes('medicine')) {
+              conditionData.medications.push(answer);
+            }
+            if (question.toLowerCase().includes('doctor') || question.toLowerCase().includes('physician')) {
+              conditionData.doctorName = answer;
+            }
+          });
+        }
+
+        await HealthDataService.addCondition(conditionData);
+        
+        Alert.alert(
+          'Success',
+          `${selectedCondition.name} has been added to your condition management successfully!`,
+          [
+            {
+              text: 'Add Another Condition',
+              onPress: () => {
+                setSelectedCondition(null);
+                setAnswers({});
+                setCurrentStep(0);
+              }
+            },
+            {
+              text: 'View Conditions',
+              onPress: () => {
+                navigation.navigate('ConditionManagement');
+              }
+            },
+            {
+              text: 'Explore Medications',
+              onPress: () => {
+                navigation.navigate('ConditionDrugs', {
+                  condition: selectedCondition,
+                  answers: answers
+                });
+              }
+            }
+          ]
+        );
+        
+      } catch (error) {
+        console.error('Error saving condition:', error);
+        Alert.alert('Error', 'Failed to save condition. Please try again.');
+      }
     }
   };
 

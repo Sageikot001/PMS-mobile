@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; // For avatar placeholder
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import notificationService from '../../services/NotificationService';
-import { getTodaysAppointments } from '../../data/appointmentsData';
+import AppointmentService from '../../services/AppointmentService';
+import { userData } from '../../data/dummyUser';
 
 // Mock data for recent patients - patients who recently had appointments
 const mockRecentPatients = [
@@ -24,6 +25,8 @@ const mockRecentPatients = [
 const DoctorHomeScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const [todaysAppointments, setTodaysAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // Mock doctor profile data (in a real app, this would come from user context/API)
   const doctorProfile = {
@@ -43,40 +46,119 @@ const DoctorHomeScreen = () => {
     completedAppointments: 3420
   };
 
-  // Get today's appointments from shared data
-  const todaysAppointments = getTodaysAppointments();
+  // Load today's appointments from AppointmentService
+  const loadTodaysAppointments = async () => {
+    try {
+      setLoading(true);
+      
+      // Initialize AppointmentService with doctor data
+      const doctorUser = userData.doctor;
+      await AppointmentService.initialize(doctorUser, 'doctor');
+      
+      // Force refresh data to ensure we get the latest appointments
+      await AppointmentService.refreshData();
+      
+      // Get today's appointments
+      const today = new Date().toISOString().split('T')[0];
+      const allAppointments = await AppointmentService.getMyAppointments();
+      const todaysAppts = allAppointments.filter(apt => {
+        // Convert appointmentDate to YYYY-MM-DD format for comparison
+        const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+        return aptDate === today;
+      });
+      
+      setTodaysAppointments(todaysAppts);
+      console.log(`📅 Loaded ${todaysAppts.length} appointments for today`);
+      
+      // Schedule notifications for appointments
+      if (todaysAppts.length > 0) {
+        scheduleAppointmentNotifications(todaysAppts);
+      }
+    } catch (error) {
+      console.error('Error loading today\'s appointments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Initialize notification service and schedule reminders when screen loads
-  useEffect(() => {
-    const initializeNotifications = async () => {
-      try {
-        // Initialize notification service
-        await notificationService.initialize();
+  // Schedule notifications for appointments
+  const scheduleAppointmentNotifications = async (appointments) => {
+    try {
+      // Initialize notification service
+      await notificationService.initialize();
+      
+      console.log('📋 Original appointments data:', appointments.map(apt => ({
+        id: apt.id,
+        appointmentDate: apt.appointmentDate,
+        appointmentTime: apt.appointmentTime,
+        patientName: apt.patientName
+      })));
+      
+      // Add date field to appointments for notification service compatibility
+      const appointmentsWithDate = appointments.map(apt => {
+        // Convert appointmentDate (ISO string) to date (YYYY-MM-DD format)
+        const appointmentDate = new Date(apt.appointmentDate);
+        const dateString = appointmentDate.toISOString().split('T')[0];
         
-        // Schedule reminders for today's appointments
-        if (todaysAppointments.length > 0) {
-          console.log('Scheduling reminders for today\'s appointments');
-          notificationService.scheduleAllTodaysReminders(todaysAppointments);
+        const appointmentWithDate = {
+          ...apt,
+          date: dateString
+        };
+        
+        console.log(`📅 Converted appointment ${apt.id}:`, {
+          originalDate: apt.appointmentDate,
+          convertedDate: dateString,
+          appointmentTime: apt.appointmentTime,
+          patientName: apt.patientName
+        });
+        
+        return appointmentWithDate;
+      });
+      
+      // Test data structure for each appointment
+      appointmentsWithDate.forEach(appointment => {
+        const isValid = notificationService.testAppointmentDataStructure(appointment);
+        if (!isValid) {
+          console.error('Invalid appointment data structure:', appointment);
         }
-        
-        // Clean up old notifications
-        notificationService.cleanupExpiredNotifications();
-      } catch (error) {
-        console.error('Error initializing notifications:', error);
+      });
+      
+      console.log('Scheduling reminders for today\'s appointments');
+      notificationService.scheduleAllTodaysReminders(appointmentsWithDate);
+      
+      // Clean up old notifications
+      notificationService.cleanupExpiredNotifications();
+    } catch (error) {
+      console.error('Error scheduling notifications:', error);
+    }
+  };
+
+  // Initialize services and load appointments when component mounts
+  useEffect(() => {
+    loadTodaysAppointments();
+    
+    // Add listener for appointment changes to enable real-time updates
+    const appointmentListener = (event, data) => {
+      console.log('📅 Appointment event received:', event, data);
+      if (event === 'appointment_created' || event === 'appointment_updated' || event === 'appointment_cancelled') {
+        // Refresh appointments when any appointment changes
+        loadTodaysAppointments();
       }
     };
-
-    initializeNotifications();
+    
+    AppointmentService.addListener(appointmentListener);
+    
+    // Cleanup listener on unmount
+    return () => {
+      AppointmentService.removeListener(appointmentListener);
+    };
   }, []);
 
-  // Re-schedule notifications when the screen comes into focus
+  // Re-load appointments when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      if (todaysAppointments.length > 0) {
-        console.log('Re-checking appointment reminders');
-        notificationService.scheduleAllTodaysReminders(todaysAppointments);
-      }
-    }, [todaysAppointments])
+      loadTodaysAppointments();
+    }, [])
   );
 
   // Handle profile navigation
@@ -92,14 +174,14 @@ const DoctorHomeScreen = () => {
         appointment: item 
       })}
     >
-      <Text style={styles.appointmentTime}>{item.time}</Text>
+      <Text style={styles.appointmentTime}>{item.appointmentTime}</Text>
       <View style={styles.appointmentDetails}>
-        <Text style={styles.appointmentPatientName}>{item.patient}</Text>
-        <Text style={styles.appointmentType}>{item.type} • {item.duration}</Text>
+        <Text style={styles.appointmentPatientName}>{item.patientName}</Text>
+        <Text style={styles.appointmentType}>{item.type} • {item.duration || 30} min</Text>
       </View>
       <View style={styles.appointmentActions}>
         <View style={[styles.statusIndicator, 
-          item.status === 'accepted' ? styles.acceptedStatus : 
+          item.status === 'scheduled' || item.status === 'confirmed' ? styles.acceptedStatus : 
           item.status === 'cancelled' ? styles.rejectedStatus : styles.pendingStatus
         ]}>
           <Text style={styles.statusText}>{item.status || 'Pending'}</Text>
@@ -176,7 +258,9 @@ const DoctorHomeScreen = () => {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          {todaysAppointments.length > 0 ? (
+          {loading ? (
+            <Text style={styles.emptyStateText}>Loading appointments...</Text>
+          ) : todaysAppointments.length > 0 ? (
             todaysAppointments.map((item) => (
               <View key={item.id}>{renderAppointmentCard({ item })}</View>
             ))

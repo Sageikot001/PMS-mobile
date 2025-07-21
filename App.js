@@ -8,6 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Import Authentication Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
+// Import Cart Context
+import { CartProvider } from './src/context/CartContext';
+
 // Import Error Boundary
 import ErrorBoundary from './src/components/ErrorBoundary';
 
@@ -62,6 +65,7 @@ import MedicationRefill from './src/pages/MedicationRefill';
 import PharmaBundles from './src/pages/PharmaBundles/PharmaBundles';
 import InstitutionPackages from './src/pages/PharmaBundles/InstitutionPackages';
 import PackageDetails from './src/pages/PharmaBundles/PackageDetails';
+import UserAppointments from './src/pages/Appointments/UserAppointments';
 
 // Import Integration Example
 import UserManagementExample from './src/components/UserManagementExample';
@@ -93,13 +97,13 @@ const MainLayout = ({ navigation }) => {
 
   return (
     <ErrorBoundary>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          {renderScreen()}
-        </View>
-        <BottomNav activeTab={activeTab} onTabPress={setActiveTab} navigation={navigation} />
-        <StatusBar style="auto" />
-      </SafeAreaView>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        {renderScreen()}
+      </View>
+      <BottomNav activeTab={activeTab} onTabPress={setActiveTab} navigation={navigation} />
+      <StatusBar style="auto" />
+    </SafeAreaView>
     </ErrorBoundary>
   );
 };
@@ -158,6 +162,7 @@ const AppNavigator = () => {
           <Stack.Screen name="PharmaBundles" component={PharmaBundles} />
           <Stack.Screen name="InstitutionPackages" component={InstitutionPackages} />
           <Stack.Screen name="PackageDetails" component={PackageDetails} />
+          <Stack.Screen name="UserAppointments" component={UserAppointments} />
           <Stack.Screen name="PaystackPayment" component={PaystackPayment} options={{ headerShown: false }} />
           {/* Integration Example Screen */}
           <Stack.Screen 
@@ -180,14 +185,16 @@ const AppNavigator = () => {
   );
 };
 
-// Main App component with authentication provider
+// Main App component with authentication and cart providers
 export default function App() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <AuthProvider>
+      <AuthProvider>
+        <CartProvider>
           <AppNavigator />
-        </AuthProvider>
+        </CartProvider>
+      </AuthProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

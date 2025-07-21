@@ -307,13 +307,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default {
-  FullScreenLoading,
-  InlineLoading,
-  SkeletonItem,
-  SkeletonContent,
-  LoadingButton,
-  PageLoading,
-  EmptyStateLoading,
-  RefreshLoading,
-}; 
+// All components are already exported above with 'export const' 

@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ConsultationActions from '../../../components/ConsultationActions';
+import HealthDataService, { WELLNESS_CALCULATION_TYPES, HEALTH_METRIC_TYPES } from '../../../services/HealthDataService';
+import HealthActivityService, { ACTIVITY_TYPES } from '../../../services/HealthActivityService';
 
 const BMICalculator = () => {
   const navigation = useNavigation();
@@ -21,6 +24,17 @@ const BMICalculator = () => {
   const [useMetric, setUseMetric] = useState(true);
   const [feet, setFeet] = useState('');
   const [inches, setInches] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  // Record activity when component mounts
+  useEffect(() => {
+    HealthActivityService.recordActivity(
+      ACTIVITY_TYPES.WELLNESS_CALC, 
+      'BMICalculator',
+      { calcType: 'bmi', calcName: 'BMI Calculator' }
+    );
+  }, []);
 
   const toggleUnit = () => {
     setUseMetric(!useMetric);
@@ -31,19 +45,25 @@ const BMICalculator = () => {
     setInches('');
     setBMI(null);
     setCategory('');
+    setIsSaved(false);
   };
 
   const calculateBMI = () => {
+    setIsCalculating(true);
+    
     let heightInMeters;
     let weightInKg;
+    let heightInCm;
 
     if (useMetric) {
-      heightInMeters = parseFloat(height) / 100;
+      heightInCm = parseFloat(height);
+      heightInMeters = heightInCm / 100;
       weightInKg = parseFloat(weight);
     } else {
-      // Convert feet and inches to meters
+      // Convert feet and inches to meters and cm
       const totalInches = (parseFloat(feet) * 12) + parseFloat(inches);
       heightInMeters = totalInches * 0.0254;
+      heightInCm = totalInches * 2.54;
       // Convert pounds to kg
       weightInKg = parseFloat(weight) * 0.453592;
     }
@@ -52,60 +72,129 @@ const BMICalculator = () => {
       const bmiValue = (weightInKg / (heightInMeters * heightInMeters)).toFixed(1);
       setBMI(bmiValue);
       
+      let categoryText = '';
       if (bmiValue < 18.5) {
-        setCategory('Underweight');
+        categoryText = 'Underweight';
       } else if (bmiValue >= 18.5 && bmiValue < 25) {
-        setCategory('Normal weight');
+        categoryText = 'Normal weight';
       } else if (bmiValue >= 25 && bmiValue < 30) {
-        setCategory('Overweight');
+        categoryText = 'Overweight';
       } else {
-        setCategory('Obese');
+        categoryText = 'Obese';
       }
+      
+      setCategory(categoryText);
+      setIsSaved(false); // Reset saved status when recalculating
+    }
+    
+    setIsCalculating(false);
+  };
+
+  const saveBMICalculation = async () => {
+    if (!bmi || !category) {
+      Alert.alert('Error', 'Please calculate BMI first');
+      return;
+    }
+
+    try {
+      setIsCalculating(true);
+      
+      // Prepare input data
+      const inputData = {
+        weight: useMetric ? weight : weight,
+        weightUnit: useMetric ? 'kg' : 'lbs',
+        height: useMetric ? height : `${feet}'${inches}"`,
+        heightInCm: useMetric ? parseFloat(height) : ((parseFloat(feet) * 12) + parseFloat(inches)) * 2.54,
+        weightInKg: useMetric ? parseFloat(weight) : parseFloat(weight) * 0.453592,
+        useMetric: useMetric,
+      };
+
+      if (!useMetric) {
+        inputData.feet = feet;
+        inputData.inches = inches;
+      }
+
+      const results = {
+        bmi: parseFloat(bmi),
+        category: category,
+        calculatedAt: new Date().toISOString(),
+      };
+
+      const calculationData = {
+        input: inputData,
+        results: results,
+      };
+
+      // Save wellness calculation
+      await HealthDataService.saveWellnessCalculation(
+        WELLNESS_CALCULATION_TYPES.BMI, 
+        calculationData
+      );
+
+      // Also store individual height and weight metrics for tracking
+      await HealthDataService.addHealthMetric(HEALTH_METRIC_TYPES.HEIGHT, {
+        value: inputData.heightInCm.toFixed(1),
+        unit: 'cm',
+        source: 'bmi_calculator',
+        notes: 'Recorded via BMI Calculator',
+      });
+
+      await HealthDataService.addHealthMetric(HEALTH_METRIC_TYPES.WEIGHT, {
+        value: inputData.weightInKg.toFixed(1),
+        unit: 'kg',
+        source: 'bmi_calculator',
+        notes: 'Recorded via BMI Calculator',
+      });
+
+      // BMI will be automatically calculated and stored by the HealthDataService
+
+      setIsSaved(true);
+      
+      Alert.alert(
+        'Success',
+        `BMI calculation saved successfully!\n\nYour BMI: ${bmi}\nCategory: ${category}\n\nYour height and weight have also been added to your health metrics.`,
+        [
+          { text: 'OK', onPress: () => {} },
+          { 
+            text: 'View Health Metrics', 
+            onPress: () => navigation.navigate('MyHealth') 
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving BMI calculation:', error);
+      Alert.alert('Error', 'Failed to save BMI calculation. Please try again.');
+    } finally {
+      setIsCalculating(false);
     }
   };
 
-  const renderHeightInput = () => {
-    if (useMetric) {
-      return (
-        <View style={styles.inputWithUnit}>
-          <TextInput
-            style={styles.input}
-            value={height}
-            onChangeText={setHeight}
-            placeholder="0"
-            keyboardType="numeric"
-            maxLength={3}
-          />
-          <Text style={styles.unit}>cm</Text>
-        </View>
-      );
-    } else {
-      return (
-        <View style={styles.imperialInputContainer}>
-          <View style={styles.inputWithUnit}>
-            <TextInput
-              style={[styles.input, styles.imperialInput]}
-              value={feet}
-              onChangeText={setFeet}
-              placeholder="0"
-              keyboardType="numeric"
-              maxLength={1}
-            />
-            <Text style={styles.unit}>ft</Text>
-          </View>
-          <View style={styles.inputWithUnit}>
-            <TextInput
-              style={[styles.input, styles.imperialInput]}
-              value={inches}
-              onChangeText={setInches}
-              placeholder="0"
-              keyboardType="numeric"
-              maxLength={2}
-            />
-            <Text style={styles.unit}>in</Text>
-          </View>
-        </View>
-      );
+  const getRecommendation = () => {
+    if (!category) return '';
+    
+    switch (category) {
+      case 'Underweight':
+        return 'Consider consulting with a healthcare provider about healthy weight gain strategies through balanced nutrition and exercise.';
+      case 'Normal weight':
+        return 'Excellent! You are at a healthy weight. Maintain a balanced diet and regular exercise routine to keep it up.';
+      case 'Overweight':
+        return 'Consider consulting with a healthcare provider about healthy weight management through diet and exercise.';
+      case 'Obese':
+        return 'We recommend consulting with a healthcare provider about a comprehensive weight management plan.';
+      default:
+        return '';
+    }
+  };
+
+  const getBMIColor = () => {
+    if (!category) return '#007bff';
+    
+    switch (category) {
+      case 'Underweight': return '#ff9800';
+      case 'Normal weight': return '#4caf50';
+      case 'Overweight': return '#ff9800';
+      case 'Obese': return '#f44336';
+      default: return '#007bff';
     }
   };
 
@@ -133,56 +222,101 @@ const BMICalculator = () => {
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Height</Text>
-            {renderHeightInput()}
-          </View>
+        {useMetric ? (
+          <View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Height (cm)</Text>
+              <TextInput
+                style={styles.input}
+                value={height}
+                onChangeText={setHeight}
+                keyboardType="numeric"
+                placeholder="Enter height in cm"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Weight</Text>
-            <View style={styles.inputWithUnit}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Weight (kg)</Text>
               <TextInput
                 style={styles.input}
                 value={weight}
                 onChangeText={setWeight}
-                placeholder="0"
                 keyboardType="numeric"
-                maxLength={3}
+                placeholder="Enter weight in kg"
+                placeholderTextColor="#999"
               />
-              <Text style={styles.unit}>{useMetric ? 'kg' : 'lbs'}</Text>
             </View>
           </View>
+        ) : (
+          <View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Height</Text>
+              <View style={styles.imperialHeightContainer}>
+                <TextInput
+                  style={[styles.input, styles.imperialInput]}
+                  value={feet}
+                  onChangeText={setFeet}
+                  keyboardType="numeric"
+                  placeholder="Feet"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.imperialSeparator}>ft</Text>
+                <TextInput
+                  style={[styles.input, styles.imperialInput]}
+                  value={inches}
+                  onChangeText={setInches}
+                  keyboardType="numeric"
+                  placeholder="Inches"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.imperialSeparator}>in</Text>
+              </View>
+            </View>
 
-          <TouchableOpacity 
-            style={[
-              styles.calculateButton,
-              (!weight || (useMetric && !height) || (!useMetric && (!feet || !inches))) && 
-              styles.calculateButtonDisabled
-            ]}
-            onPress={calculateBMI}
-            disabled={!weight || (useMetric && !height) || (!useMetric && (!feet || !inches))}
-          >
-            <Text style={styles.calculateButtonText}>Calculate BMI</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Weight (lbs)</Text>
+              <TextInput
+                style={styles.input}
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="numeric"
+                placeholder="Enter weight in lbs"
+                placeholderTextColor="#999"
+              />
+            </View>
+          </View>
+        )}
+
+        <TouchableOpacity 
+          style={[styles.calculateButton, isCalculating && styles.disabledButton]} 
+          onPress={calculateBMI}
+          disabled={isCalculating}
+        >
+          <Text style={styles.calculateButtonText}>
+            {isCalculating ? 'Calculating...' : 'Calculate BMI'}
+          </Text>
+        </TouchableOpacity>
 
         {bmi && (
           <View style={styles.resultContainer}>
-            <View style={styles.bmiValue}>
-              <Text style={styles.bmiNumber}>{bmi}</Text>
+            <View style={[styles.bmiValue, { borderColor: getBMIColor() }]}>
+              <Text style={[styles.bmiNumber, { color: getBMIColor() }]}>{bmi}</Text>
               <Text style={styles.bmiLabel}>Your BMI</Text>
             </View>
             
             <Text style={styles.categoryText}>
-              You are in the <Text style={styles.categoryHighlight}>{category}</Text> range
+              You are in the <Text style={[styles.categoryHighlight, { color: getBMIColor() }]}>{category}</Text> range
             </Text>
 
             <View style={styles.scaleContainer}>
               <View style={styles.scale}>
                 <View style={[
                   styles.scaleIndicator,
-                  { left: `${Math.min(Math.max((bmi / 40) * 100, 0), 100)}%` }
+                  { 
+                    left: `${Math.min(Math.max((bmi / 40) * 100, 0), 100)}%`,
+                    backgroundColor: getBMIColor()
+                  }
                 ]} />
                 <View style={styles.scaleMarkers}>
                   <Text style={styles.scaleText}>Underweight</Text>
@@ -195,15 +329,28 @@ const BMICalculator = () => {
 
             <Text style={styles.recommendationTitle}>What does this mean?</Text>
             <Text style={styles.recommendationText}>
-              {category === 'Normal weight' 
-                ? 'You are at a healthy weight. Maintain a balanced diet and regular exercise routine.'
-                : `Consider consulting with a healthcare provider about ways to achieve a healthier weight through diet and exercise.`
-              }
+              {getRecommendation()}
             </Text>
 
-            {category !== 'Normal weight' && (
-              <ConsultationActions />
+            {!isSaved && (
+              <TouchableOpacity 
+                style={[styles.saveButton, isCalculating && styles.disabledButton]} 
+                onPress={saveBMICalculation}
+                disabled={isCalculating}
+              >
+                <Text style={styles.saveButtonText}>
+                  {isCalculating ? 'Saving...' : '💾 Save to Health Profile'}
+                </Text>
+              </TouchableOpacity>
             )}
+
+            {isSaved && (
+              <View style={styles.savedIndicator}>
+                <Text style={styles.savedText}>✅ Saved to your health profile</Text>
+              </View>
+            )}
+
+            <ConsultationActions />
           </View>
         )}
       </ScrollView>
@@ -229,72 +376,86 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: '#333',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 32,
+    marginBottom: 24,
+    lineHeight: 22,
   },
-  inputContainer: {
+  unitToggle: {
     backgroundColor: '#f5f5f5',
-    padding: 24,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
     marginBottom: 24,
   },
-  inputWrapper: {
+  unitToggleText: {
+    fontSize: 16,
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  inputGroup: {
     marginBottom: 16,
   },
-  label: {
+  inputLabel: {
     fontSize: 16,
+    fontWeight: '600',
     marginBottom: 8,
     color: '#333',
   },
-  inputWithUnit: {
+  input: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  imperialHeightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
-  input: {
+  imperialInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 16,
+    marginRight: 8,
   },
-  unit: {
-    marginLeft: 12,
+  imperialSeparator: {
     fontSize: 16,
     color: '#666',
-    width: 40,
+    marginRight: 12,
   },
   calculateButton: {
-    backgroundColor: '#6200ee',
-    padding: 16,
+    backgroundColor: '#007bff',
     borderRadius: 8,
+    padding: 16,
     alignItems: 'center',
-    marginTop: 16,
+    marginBottom: 24,
   },
-  calculateButtonDisabled: {
+  disabledButton: {
     backgroundColor: '#ccc',
   },
   calculateButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   resultContainer: {
-    backgroundColor: '#f5f5f5',
-    padding: 24,
-    borderRadius: 16,
+    alignItems: 'center',
+    paddingBottom: 24,
   },
   bmiValue: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    backgroundColor: '#fff',
   },
   bmiNumber: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#6200ee',
+    marginBottom: 4,
   },
   bmiLabel: {
     fontSize: 16,
@@ -302,68 +463,81 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 18,
-    textAlign: 'center',
+    color: '#333',
     marginBottom: 24,
+    textAlign: 'center',
   },
   categoryHighlight: {
     fontWeight: 'bold',
-    color: '#6200ee',
   },
   scaleContainer: {
+    width: '100%',
     marginBottom: 24,
   },
   scale: {
     height: 8,
-    backgroundColor: '#ddd',
+    backgroundColor: '#f0f0f0',
     borderRadius: 4,
-    marginBottom: 8,
     position: 'relative',
+    marginBottom: 12,
   },
   scaleIndicator: {
     position: 'absolute',
+    top: -4,
     width: 16,
     height: 16,
-    backgroundColor: '#6200ee',
     borderRadius: 8,
-    top: -4,
-    marginLeft: -8,
+    backgroundColor: '#007bff',
   },
   scaleMarkers: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 8,
   },
   scaleText: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#666',
+    textAlign: 'center',
+    flex: 1,
   },
   recommendationTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   recommendationText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    lineHeight: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 16,
   },
-  unitToggle: {
-    alignSelf: 'flex-end',
-    padding: 8,
+  saveButton: {
+    backgroundColor: '#4caf50',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  savedIndicator: {
+    backgroundColor: '#e8f5e8',
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 16,
   },
-  unitToggleText: {
-    color: '#6200ee',
+  savedText: {
+    color: '#4caf50',
     fontSize: 14,
-    fontWeight: '500',
-  },
-  imperialInputContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  imperialInput: {
-    flex: 0.8,
-    marginRight: 8,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

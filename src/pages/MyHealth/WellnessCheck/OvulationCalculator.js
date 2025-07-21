@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import OvulationCalendar from '../../../components/OvulationCalendar';
 import OvulationTracker from '../../../components/OvulationTracker';
+import HealthDataService, { WELLNESS_CALCULATION_TYPES } from '../../../services/HealthDataService';
 
 const OvulationCalculator = () => {
   const navigation = useNavigation();
@@ -22,6 +24,7 @@ const OvulationCalculator = () => {
     regularity: 'very_regular', // very_regular, somewhat_regular, irregular
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const renderWelcomeScreen = () => (
     <View style={styles.container}>
@@ -208,6 +211,73 @@ const OvulationCalculator = () => {
     </View>
   );
 
+  const saveOvulationCalculation = async () => {
+    try {
+      const ovulationDay = new Date(cycleData.lastPeriodDate);
+      ovulationDay.setDate(ovulationDay.getDate() + cycleData.cycleLength - 14);
+
+      const fertileWindowStart = new Date(ovulationDay);
+      const fertileWindowEnd = new Date(ovulationDay);
+
+      // Adjust fertile window based on regularity
+      switch(cycleData.regularity) {
+        case 'very_regular':
+          fertileWindowStart.setDate(ovulationDay.getDate() - 5);
+          break;
+        case 'somewhat_regular':
+          fertileWindowStart.setDate(ovulationDay.getDate() - 7);
+          break;
+        case 'irregular':
+          fertileWindowStart.setDate(ovulationDay.getDate() - 9);
+          break;
+      }
+
+      const nextPeriod = new Date(cycleData.lastPeriodDate);
+      nextPeriod.setDate(nextPeriod.getDate() + cycleData.cycleLength);
+
+      const inputData = {
+        lastPeriodDate: cycleData.lastPeriodDate.toISOString(),
+        cycleLength: cycleData.cycleLength,
+        regularity: cycleData.regularity,
+      };
+
+      const results = {
+        ovulationDate: ovulationDay.toISOString(),
+        fertileWindowStart: fertileWindowStart.toISOString(),
+        fertileWindowEnd: fertileWindowEnd.toISOString(),
+        nextPeriodDate: nextPeriod.toISOString(),
+        calculatedAt: new Date().toISOString(),
+      };
+
+      const calculationData = {
+        input: inputData,
+        results: results,
+      };
+
+      await HealthDataService.saveWellnessCalculation(
+        WELLNESS_CALCULATION_TYPES.OVULATION, 
+        calculationData
+      );
+
+      setIsSaved(true);
+      
+      Alert.alert(
+        'Success',
+        'Ovulation calculation saved successfully!\n\nYour cycle data has been added to your health profile for tracking.',
+        [
+          { text: 'OK', onPress: () => {} },
+          { 
+            text: 'View Health Profile', 
+            onPress: () => navigation.navigate('MyHealth') 
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving ovulation calculation:', error);
+      Alert.alert('Error', 'Failed to save calculation. Please try again.');
+    }
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -221,8 +291,39 @@ const OvulationCalculator = () => {
       case 5:
         return (
           <View style={styles.container}>
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.closeButtonText}>×</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.title}>Your Fertility Calendar</Text>
+            <Text style={styles.subtitle}>
+              Based on your cycle information, here's your personalized fertility calendar
+            </Text>
+
             <OvulationCalendar cycleData={cycleData} />
             <OvulationTracker />
+
+            {!isSaved && (
+              <TouchableOpacity style={styles.saveButton} onPress={saveOvulationCalculation}>
+                <Text style={styles.saveButtonText}>💾 Save to Health Profile</Text>
+              </TouchableOpacity>
+            )}
+
+            {isSaved && (
+              <View style={styles.savedIndicator}>
+                <Text style={styles.savedText}>✅ Saved to your health profile</Text>
+              </View>
+            )}
+
+            <View style={styles.reminderCard}>
+              <Text style={styles.reminderTitle}>📱 Track Daily</Text>
+              <Text style={styles.reminderText}>
+                For better accuracy, track your daily symptoms, temperature, and other fertility signs
+              </Text>
+            </View>
           </View>
         );
       default:
@@ -346,6 +447,46 @@ const styles = StyleSheet.create({
   },
   selectedRegularityText: {
     color: '#fff',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  savedIndicator: {
+    backgroundColor: '#E8F5E9',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  savedText: {
+    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  reminderCard: {
+    backgroundColor: '#F0F7F8',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  reminderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  reminderText: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

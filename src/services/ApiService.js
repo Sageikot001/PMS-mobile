@@ -35,10 +35,10 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
       
       // Log request in development
       if (__DEV__) {
@@ -49,7 +49,7 @@ api.interceptors.request.use(
       return config;
     } catch (error) {
       console.error('Request interceptor error:', error);
-      return config;
+    return config;
     }
   },
   (error) => {
@@ -125,7 +125,7 @@ api.interceptors.response.use(
         // Store new tokens
         await AsyncStorage.setItem(TOKEN_KEY, accessToken);
         await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-        
+
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);

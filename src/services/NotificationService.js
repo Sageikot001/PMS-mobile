@@ -90,8 +90,9 @@ class NotificationService {
         return null;
       }
 
-      if (!appointment.time) {
-        console.error('scheduleAppointmentReminder: appointment.time is missing', appointment);
+      // Use appointmentTime instead of time to match our data structure
+      if (!appointment.appointmentTime) {
+        console.error('scheduleAppointmentReminder: appointment.appointmentTime is missing', appointment);
         return null;
       }
 
@@ -100,23 +101,24 @@ class NotificationService {
         return null;
       }
 
-      if (!appointment.patient) {
-        console.error('scheduleAppointmentReminder: appointment.patient is missing', appointment);
+      // Use patientName instead of patient to match our data structure
+      if (!appointment.patientName) {
+        console.error('scheduleAppointmentReminder: appointment.patientName is missing', appointment);
         return null;
       }
 
       console.log('Scheduling reminder for appointment:', {
         id: appointment.id,
         date: appointment.date,
-        time: appointment.time,
-        patient: appointment.patient,
+        appointmentTime: appointment.appointmentTime,
+        patientName: appointment.patientName,
         reminderMinutes
       });
 
-      const appointmentTime = this.parseAppointmentDateTime(appointment.date, appointment.time);
+      const appointmentTime = this.parseAppointmentDateTime(appointment.date, appointment.appointmentTime);
       
       if (!appointmentTime) {
-        console.error('Failed to parse appointment time for:', appointment.date, appointment.time);
+        console.error('Failed to parse appointment time for:', appointment.date, appointment.appointmentTime);
         return null;
       }
       
@@ -141,7 +143,7 @@ class NotificationService {
         appointmentId: appointment.id,
         type: 'appointment_reminder',
         title: `Appointment in ${reminderMinutes} minutes`,
-        message: `You have an appointment with ${appointment.patient} in ${reminderMinutes} minutes`,
+        message: `You have an appointment with ${appointment.patientName} in ${reminderMinutes} minutes`,
         scheduledTime: reminderTime.toISOString(),
         appointmentData: appointment,
         reminderMinutes
@@ -466,7 +468,7 @@ class NotificationService {
     const notification = this.createNotification(
       'appointment_ready',
       'Patient is Waiting',
-      `${appointment.patient} is ready for their appointment`,
+      `${appointment.patientName} is ready for their appointment`,
       { appointmentId: appointment.id } // For navigation
     );
 
@@ -534,6 +536,27 @@ class NotificationService {
   forceCheckNotifications() {
     console.log('Forcing notification check...');
     this.checkForDueNotifications();
+  }
+
+  // Test method to verify appointment data structure compatibility
+  testAppointmentDataStructure(appointment) {
+    console.log('Testing appointment data structure:', {
+      hasId: !!appointment.id,
+      hasDate: !!appointment.date,
+      hasAppointmentTime: !!appointment.appointmentTime,
+      hasPatientName: !!appointment.patientName,
+      appointmentData: appointment
+    });
+
+    const isValid = appointment.id && appointment.date && appointment.appointmentTime && appointment.patientName;
+    
+    if (isValid) {
+      console.log('✅ Appointment data structure is valid');
+      return true;
+    } else {
+      console.error('❌ Appointment data structure is invalid');
+      return false;
+    }
   }
 }
 

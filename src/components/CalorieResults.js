@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
 } from 'react-native';
 
-const CalorieResults = ({ userData }) => {
+const CalorieResults = ({ userData, onResultsCalculated }) => {
   const calculateBMR = () => {
     // Convert weight to kg if in lbs
     const weightInKg = userData.weightUnit === 'Lbs' 
@@ -40,6 +40,31 @@ const CalorieResults = ({ userData }) => {
   const bmr = calculateBMR();
   const tdee = calculateTDEE(bmr);
 
+  // Call the callback with results when component mounts or data changes
+  useEffect(() => {
+    if (onResultsCalculated && bmr && tdee) {
+      const results = {
+        bmr: Math.round(bmr),
+        tdee: tdee,
+        toLoseWeight: {
+          min: tdee - 500,
+          max: tdee - 250,
+          rate: '0.5-1kg/week'
+        },
+        toMaintainWeight: {
+          calories: tdee,
+          rate: '0kg/week'
+        },
+        toGainWeight: {
+          min: tdee + 250,
+          max: tdee + 500,
+          rate: '0.25-0.5kg/week'
+        }
+      };
+      onResultsCalculated(results);
+    }
+  }, [bmr, tdee, onResultsCalculated]);
+
   return (
     <View style={styles.container}>
       <ResultCard
@@ -71,44 +96,37 @@ const CalorieResults = ({ userData }) => {
 };
 
 const ResultCard = ({ title, calories, rate, color }) => (
-  <View style={styles.card}>
-    <View style={styles.cardHeader}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-    </View>
-    <Text style={styles.calories}>{calories}</Text>
+  <View style={[styles.card, { borderLeftColor: color }]}>
+    <Text style={styles.cardTitle}>{title}</Text>
+    <Text style={[styles.calories, { color }]}>{calories}</Text>
     <Text style={styles.rate}>{rate}</Text>
   </View>
 );
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 32,
+    paddingVertical: 16,
   },
   card: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    marginBottom: 8,
     color: '#333',
   },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
   calories: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
   },
@@ -118,7 +136,7 @@ const styles = StyleSheet.create({
   },
   disclaimer: {
     fontSize: 12,
-    color: '#666',
+    color: '#999',
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 16,
