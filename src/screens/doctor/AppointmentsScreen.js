@@ -18,6 +18,7 @@ import notificationService from '../../services/NotificationService';
 import AppointmentService, { APPOINTMENT_STATUS } from '../../services/AppointmentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userData } from '../../data/dummyUser';
+import BackendService from '../../services/BackendService';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -173,16 +174,28 @@ const DoctorAppointmentsScreen = () => {
   const loadAppointments = async () => {
     try {
       setLoading(true);
+      console.log('👨‍⚕️ Loading appointments for doctor...');
       
       // Initialize AppointmentService with doctor data
       const doctorUser = userData.doctor;
+      console.log('👨‍⚕️ Initializing service with doctor:', doctorUser.name);
+      
       await AppointmentService.initialize(doctorUser, 'doctor');
       
       // Force refresh data to ensure we get the latest appointments
+      console.log('👨‍⚕️ Refreshing data from storage...');
       await AppointmentService.refreshData();
       
       // Get doctor's appointments
       const doctorAppointments = await AppointmentService.getMyAppointments();
+      console.log('👨‍⚕️ Raw appointments from service:', doctorAppointments);
+      
+      if (!Array.isArray(doctorAppointments)) {
+        console.error('👨‍⚕️ Invalid appointments data received:', doctorAppointments);
+        setAppointments([]);
+        return;
+      }
+      
       setAppointments(doctorAppointments);
       
       console.log(`👨‍⚕️ Loaded ${doctorAppointments.length} appointments for professional portal`);
@@ -191,7 +204,8 @@ const DoctorAppointmentsScreen = () => {
       scheduleAppointmentNotifications();
     } catch (error) {
       console.error('Error loading appointments:', error);
-      Alert.alert('Error', 'Failed to load appointments');
+      Alert.alert('Error', 'Failed to load appointments. Please try again.');
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -304,9 +318,9 @@ const DoctorAppointmentsScreen = () => {
         if (appointmentDate >= today) {
           const notificationAppointment = {
             id: appointment.id,
-            date: appointmentDate, // Add the date field
-            appointmentTime: appointment.appointmentTime, // Use appointmentTime instead of time
-            patientName: appointment.patientName, // Use patientName instead of patient
+            date: appointment.appointmentDate, // Use appointmentDate as date
+            appointmentTime: appointment.appointmentTime,
+            patientName: appointment.patientName,
             type: appointment.type || 'Consultation',
             duration: `${appointment.duration || 30} min`,
             status: appointment.status || 'pending',
@@ -369,22 +383,27 @@ const DoctorAppointmentsScreen = () => {
     if (!appointments.length) return [];
     
     return appointments.filter(apt => {
-      const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
-      return aptDate === selectedDate;
+      return AppointmentService.isSameDay(apt.appointmentDate, selectedDate);
     });
   }, [selectedDate, appointments]);
 
   // Memoize marked dates
   const markedDates = useMemo(() => {
     const marked = {};
+    console.log('👨‍⚕️ Computing marked dates for appointments:', appointments.length);
+    
     appointments.forEach(apt => {
-      const date = new Date(apt.appointmentDate).toISOString().split('T')[0];
-      marked[date] = {
-        marked: true,
-        dotColor: '#4A90E2',
-      };
+      const date = AppointmentService.getDateString(apt.appointmentDate);
+      if (date) {
+        console.log(`👨‍⚕️ Marking date ${date} for appointment ${apt.id}`);
+        marked[date] = {
+          marked: true,
+          dotColor: '#4A90E2',
+        };
+      }
     });
     
+    console.log('👨‍⚕️ Final marked dates:', Object.keys(marked));
     return marked;
   }, [appointments]);
 
@@ -494,6 +513,14 @@ const DoctorAppointmentsScreen = () => {
               <Text style={styles.actionButtonText}>Accept</Text>
             </TouchableOpacity>
           )}
+          {item.status === 'pending' && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#ff9800' }]}
+              onPress={() => navigation.navigate('AppointmentDetails', { appointmentId: item.id })}
+            >
+              <Text style={styles.actionButtonText}>Reschedule</Text>
+            </TouchableOpacity>
+          )}
           {item.status !== 'cancelled' && item.status !== 'completed' && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#f44336' }]}
@@ -513,7 +540,7 @@ const DoctorAppointmentsScreen = () => {
         </View>
       </TouchableOpacity>
     );
-  }, [getTypeColor, getTypeIcon, handleAppointmentPress, handleStatusUpdate, handleCancelAppointment]);
+  }, [getTypeColor, getTypeIcon, handleAppointmentPress, handleStatusUpdate, handleCancelAppointment, navigation]);
 
   // Format date display
   const formatDateDisplay = useCallback((dateString) => {
@@ -641,6 +668,71 @@ const DoctorAppointmentsScreen = () => {
     navigation.navigate('ChatListScreen');
   };
 
+  // Debug function to reset data
+  const handleResetData = async () => {
+    try {
+      Alert.alert(
+        'Reset Data',
+        'This will clear all appointment data and reinitialize. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reset',
+            style: 'destructive',
+            onPress: async () => {
+              await AppointmentService.clearAndReinitialize();
+              await loadAppointments();
+              Alert.alert('Success', 'Data reset successfully');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      Alert.alert('Error', 'Failed to reset data');
+    }
+  };
+
+  // Debug function to test synchronization
+  const handleTestSync = async () => {
+    try {
+      console.log('🔍 Starting comprehensive sync test...');
+      await AppointmentService.testComprehensiveSync();
+      Alert.alert('Sync Test', 'Comprehensive sync test completed. Check console for details.');
+    } catch (error) {
+      console.error('Error testing sync:', error);
+      Alert.alert('Error', 'Failed to run sync test');
+    }
+  };
+
+  // Test backend connectivity
+  const handleTestBackend = async () => {
+    try {
+      console.log('🌐 Testing backend connectivity...');
+      const isConnected = await BackendService.testConnection();
+      if (isConnected) {
+        Alert.alert('Backend Status', '✅ Backend is connected and available');
+      } else {
+        Alert.alert('Backend Status', '❌ Backend is not available');
+      }
+    } catch (error) {
+      console.error('Backend test error:', error);
+      Alert.alert('Backend Status', `❌ Backend test failed: ${error.message}`);
+    }
+  };
+
+  // Sync data with backend
+  const handleSyncWithBackend = async () => {
+    try {
+      console.log('🔄 Syncing data with backend...');
+      const result = await BackendService.syncData();
+      Alert.alert('Sync Complete', `✅ Synced ${result.appointments.length} appointments and ${result.notifications.length} notifications`);
+    } catch (error) {
+      console.error('Sync error:', error);
+      Alert.alert('Sync Failed', `❌ Sync failed: ${error.message}`);
+    }
+  };
+
   // Get status color
   const getStatusColor = (status) => {
     switch (status) {
@@ -672,12 +764,25 @@ const DoctorAppointmentsScreen = () => {
           <TouchableOpacity style={styles.addButton} onPress={handleAddAvailability}>
             <Ionicons name="add" size={24} color="#4A90E2" />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.debugButton} onPress={handleResetData}>
+            <Ionicons name="refresh" size={24} color="#dc3545" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.debugButton} onPress={handleTestSync}>
+            <Ionicons name="sync" size={24} color="#4A90E2" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.debugButton} onPress={handleTestBackend}>
+            <Ionicons name="link" size={24} color="#4A90E2" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.debugButton} onPress={handleSyncWithBackend}>
+            <Ionicons name="cloud-upload" size={24} color="#4A90E2" />
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Calendar Section */}
       <Animated.View style={[styles.calendarContainer, { height: calendarHeight }]}>
         <SimpleCalendar
+          key={`calendar-${Object.keys(markedDates).join('-')}`} // Force re-render when dates change
           selectedDate={selectedDate}
           onDatePress={onCalendarDayPress}
           markedDates={markedDates}
@@ -755,6 +860,7 @@ const DoctorAppointmentsScreen = () => {
           <ScrollView style={styles.modalContent}>
             <Text style={styles.modalSectionTitle}>Select Date</Text>
             <SimpleCalendar
+              key={`modal-calendar-${Object.keys(markedDates).join('-')}`} // Force re-render when dates change
               selectedDate={availabilityDate}
               onDatePress={(dateId) => {
                 if (dateId && typeof dateId === 'string') {
@@ -975,6 +1081,10 @@ const styles = StyleSheet.create({
   },
   addButton: {
     padding: 8,
+  },
+  debugButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   appointmentsSection: {
     flex: 1,

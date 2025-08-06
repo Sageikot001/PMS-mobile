@@ -66,6 +66,8 @@ import PharmaBundles from './src/pages/PharmaBundles/PharmaBundles';
 import InstitutionPackages from './src/pages/PharmaBundles/InstitutionPackages';
 import PackageDetails from './src/pages/PharmaBundles/PackageDetails';
 import UserAppointments from './src/pages/Appointments/UserAppointments';
+import PatientAppointmentDetails from './src/pages/Appointments/AppointmentDetails';
+import DoctorProfile from './src/pages/Profiles/DoctorProfile';
 
 // Import Integration Example
 import UserManagementExample from './src/components/UserManagementExample';
@@ -163,6 +165,8 @@ const AppNavigator = () => {
           <Stack.Screen name="InstitutionPackages" component={InstitutionPackages} />
           <Stack.Screen name="PackageDetails" component={PackageDetails} />
           <Stack.Screen name="UserAppointments" component={UserAppointments} />
+          <Stack.Screen name="PatientAppointmentDetails" component={PatientAppointmentDetails} />
+          <Stack.Screen name="DoctorProfile" component={DoctorProfile} />
           <Stack.Screen name="PaystackPayment" component={PaystackPayment} options={{ headerShown: false }} />
           {/* Integration Example Screen */}
           <Stack.Screen 

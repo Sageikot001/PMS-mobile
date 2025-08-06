@@ -41,6 +41,68 @@ const mockPatientFullDetails = {
     },
     currentMedication: ['Lisinopril 10mg', 'Aspirin 81mg'],
   },
+  // Sageikot's patient data
+  patient_sageikot: {
+    id: 'patient_sageikot',
+    name: 'Sageikot',
+    age: 28,
+    gender: 'Male',
+    bloodType: 'O+',
+    contact: '+234 801 234 5678',
+    email: 'sageikot@gmail.com',
+    address: 'Lagos, Nigeria',
+    profilePicUrl: null,
+    medicalHistory: [
+      { 
+        date: new Date().toISOString().split('T')[0], 
+        type: 'Initial Consultation', 
+        summary: 'First appointment booking', 
+        doctor: 'Dr. John Smith' 
+      },
+    ],
+    prescriptions: [
+      // Placeholder - no prescriptions yet
+    ],
+    notes: [
+      { 
+        date: new Date().toISOString().split('T')[0], 
+        note: 'New patient. Initial consultation scheduled.', 
+        author: 'Dr. John Smith' 
+      },
+    ],
+    vitals: {
+      height: '175cm', // Placeholder
+      weight: '70kg', // Placeholder
+      bp: '120/80 mmHg', // Placeholder
+      temperature: '98.6°F', // Placeholder
+    },
+    currentMedication: [
+      // Placeholder - no current medications
+    ],
+    // Additional fields for Sageikot
+    emergencyContact: {
+      name: 'Not specified',
+      relationship: 'Not specified',
+      phone: 'Not specified'
+    },
+    insurance: {
+      provider: 'Not specified',
+      policyNumber: 'Not specified',
+      groupNumber: 'Not specified'
+    },
+    allergies: [
+      // Placeholder - no known allergies
+    ],
+    familyHistory: [
+      // Placeholder - no family history recorded
+    ],
+    lifestyle: {
+      smoking: 'Not specified',
+      alcohol: 'Not specified',
+      exercise: 'Not specified',
+      diet: 'Not specified'
+    }
+  },
   p2: {
     id: 'p2',
     name: 'Samuel Cole',
@@ -227,26 +289,99 @@ const TabButton = ({ title, onPress, isActive }) => (
 const PatientDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { patientId } = route.params;
+  const { patientId, patientName } = route.params;
 
   const [patient, setPatient] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
 
+  // Function to create dynamic patient data for new patients
+  const createDynamicPatientData = (id, name) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    return {
+      id: id,
+      name: name || 'Unknown Patient',
+      age: 25, // Placeholder
+      gender: 'Not specified',
+      bloodType: 'Not specified',
+      contact: 'Not specified',
+      email: 'Not specified',
+      address: 'Not specified',
+      profilePicUrl: null,
+      medicalHistory: [
+        { 
+          date: currentDate, 
+          type: 'Initial Consultation', 
+          summary: 'First appointment booking', 
+          doctor: 'Dr. John Smith' 
+        },
+      ],
+      prescriptions: [
+        // Placeholder - no prescriptions yet
+      ],
+      notes: [
+        { 
+          date: currentDate, 
+          note: 'New patient. Initial consultation scheduled.', 
+          author: 'Dr. John Smith' 
+        },
+      ],
+      vitals: {
+        height: 'Not measured',
+        weight: 'Not measured',
+        bp: 'Not measured',
+        temperature: 'Not measured',
+      },
+      currentMedication: [
+        // Placeholder - no current medications
+      ],
+      emergencyContact: {
+        name: 'Not specified',
+        relationship: 'Not specified',
+        phone: 'Not specified'
+      },
+      insurance: {
+        provider: 'Not specified',
+        policyNumber: 'Not specified',
+        groupNumber: 'Not specified'
+      },
+      allergies: [
+        // Placeholder - no known allergies
+      ],
+      familyHistory: [
+        // Placeholder - no family history recorded
+      ],
+      lifestyle: {
+        smoking: 'Not specified',
+        alcohol: 'Not specified',
+        exercise: 'Not specified',
+        diet: 'Not specified'
+      }
+    };
+  };
+
   useEffect(() => {
     console.log('[PatientDetailsScreen] useEffect triggered. patientId:', patientId);
-    // Simulate fetching patient data
-    const fetchedPatient = mockPatientFullDetails[patientId];
-    console.log('[PatientDetailsScreen] mockPatientFullDetails:', JSON.stringify(mockPatientFullDetails, null, 2));
-    console.log('[PatientDetailsScreen] fetchedPatient based on patientId (', patientId, '):', JSON.stringify(fetchedPatient, null, 2));
+    
+    // Try to fetch patient from mock data first
+    let fetchedPatient = mockPatientFullDetails[patientId];
+    
+    // If patient not found in mock data, create dynamic data
+    if (!fetchedPatient) {
+      console.log('[PatientDetailsScreen] Patient not found in mock data, creating dynamic data for:', patientId);
+      fetchedPatient = createDynamicPatientData(patientId, patientName);
+    }
+    
+    console.log('[PatientDetailsScreen] Final patient data:', JSON.stringify(fetchedPatient, null, 2));
     
     setPatient(fetchedPatient);
     
-    // Set navigation title immediately after setting patient data
+    // Set navigation title
     if (fetchedPatient) {
       console.log('[PatientDetailsScreen] Setting navigation title to:', fetchedPatient.name);
       navigation.setOptions({ title: fetchedPatient.name });
     }
-  }, [patientId]);
+  }, [patientId, patientName]);
 
   if (!patient) {
     return (
@@ -261,66 +396,99 @@ const PatientDetailsScreen = () => {
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Personal Information</Text>
         <View style={styles.infoRow}><Text style={styles.infoLabel}>Name:</Text><Text style={styles.infoValue}>{patient.name}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Age:</Text><Text style={styles.infoValue}>{patient.age}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Gender:</Text><Text style={styles.infoValue}>{patient.gender}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Blood Type:</Text><Text style={styles.infoValue}>{patient.bloodType}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Age:</Text><Text style={[styles.infoValue, patient.age === 25 && styles.placeholderText]}>{patient.age}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Gender:</Text><Text style={[styles.infoValue, patient.gender === 'Not specified' && styles.placeholderText]}>{patient.gender}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Blood Type:</Text><Text style={[styles.infoValue, patient.bloodType === 'Not specified' && styles.placeholderText]}>{patient.bloodType}</Text></View>
       </View>
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Contact Information</Text>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Phone:</Text><Text style={styles.infoValue}>{patient.contact}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Email:</Text><Text style={styles.infoValue}>{patient.email}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Address:</Text><Text style={styles.infoValue}>{patient.address}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Phone:</Text><Text style={[styles.infoValue, patient.contact === 'Not specified' && styles.placeholderText]}>{patient.contact}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Email:</Text><Text style={[styles.infoValue, patient.email === 'Not specified' && styles.placeholderText]}>{patient.email}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Address:</Text><Text style={[styles.infoValue, patient.address === 'Not specified' && styles.placeholderText]}>{patient.address}</Text></View>
       </View>
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Vitals</Text>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Height:</Text><Text style={styles.infoValue}>{patient.vitals.height}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Weight:</Text><Text style={styles.infoValue}>{patient.vitals.weight}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Blood Pressure:</Text><Text style={styles.infoValue}>{patient.vitals.bp}</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Temperature:</Text><Text style={styles.infoValue}>{patient.vitals.temperature}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Height:</Text><Text style={[styles.infoValue, patient.vitals.height === 'Not measured' && styles.placeholderText]}>{patient.vitals.height}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Weight:</Text><Text style={[styles.infoValue, patient.vitals.weight === 'Not measured' && styles.placeholderText]}>{patient.vitals.weight}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Blood Pressure:</Text><Text style={[styles.infoValue, patient.vitals.bp === 'Not measured' && styles.placeholderText]}>{patient.vitals.bp}</Text></View>
+        <View style={styles.infoRow}><Text style={styles.infoLabel}>Temperature:</Text><Text style={[styles.infoValue, patient.vitals.temperature === 'Not measured' && styles.placeholderText]}>{patient.vitals.temperature}</Text></View>
       </View>
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Current Medications</Text>
-        {patient.currentMedication.map((med, index) => (
-          <Text key={index} style={styles.listItem}>{med}</Text>
-        ))}
+        {patient.currentMedication && patient.currentMedication.length > 0 ? (
+          patient.currentMedication.map((med, index) => (
+            <Text key={index} style={styles.listItem}>{med}</Text>
+          ))
+        ) : (
+          <Text style={styles.placeholderText}>No current medications recorded</Text>
+        )}
       </View>
+      {patient.emergencyContact && (
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+          <View style={styles.infoRow}><Text style={styles.infoLabel}>Name:</Text><Text style={[styles.infoValue, patient.emergencyContact.name === 'Not specified' && styles.placeholderText]}>{patient.emergencyContact.name}</Text></View>
+          <View style={styles.infoRow}><Text style={styles.infoLabel}>Relationship:</Text><Text style={[styles.infoValue, patient.emergencyContact.relationship === 'Not specified' && styles.placeholderText]}>{patient.emergencyContact.relationship}</Text></View>
+          <View style={styles.infoRow}><Text style={styles.infoLabel}>Phone:</Text><Text style={[styles.infoValue, patient.emergencyContact.phone === 'Not specified' && styles.placeholderText]}>{patient.emergencyContact.phone}</Text></View>
+        </View>
+      )}
+      {patient.allergies && (
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>Allergies</Text>
+          {patient.allergies.length > 0 ? (
+            patient.allergies.map((allergy, index) => (
+              <Text key={index} style={styles.listItem}>{allergy}</Text>
+            ))
+          ) : (
+            <Text style={styles.placeholderText}>No known allergies recorded</Text>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 
   const renderHistoryTab = () => (
     <ScrollView contentContainerStyle={styles.tabContentContainer}>
       <Text style={styles.sectionTitle}>Medical History</Text>
-      {patient.medicalHistory.map((item, index) => (
-        <View key={index} style={styles.historyItem}>
-          <Text style={styles.historyDate}>{item.date}</Text>
-          <Text style={styles.historyType}>{item.type} (with {item.doctor})</Text>
-          <Text style={styles.historySummary}>{item.summary}</Text>
-        </View>
-      ))}
+      {patient.medicalHistory && patient.medicalHistory.length > 0 ? (
+        patient.medicalHistory.map((item, index) => (
+          <View key={index} style={styles.historyItem}>
+            <Text style={styles.historyDate}>{item.date}</Text>
+            <Text style={styles.historyType}>{item.type} (with {item.doctor})</Text>
+            <Text style={styles.historySummary}>{item.summary}</Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.placeholderText}>No medical history recorded</Text>
+      )}
       <Text style={styles.sectionTitle}>Prescription History</Text>
-      {patient.prescriptions.map((item, index) => (
-        <View key={index} style={styles.historyItem}>
-          <Text style={styles.historyDate}>{item.date}</Text>
-          <Text style={styles.historyType}>{item.drug} - {item.dosage}</Text>
-          <Text style={styles.historySummary}>Status: {item.status}</Text>
-        </View>
-      ))}
+      {patient.prescriptions && patient.prescriptions.length > 0 ? (
+        patient.prescriptions.map((item, index) => (
+          <View key={index} style={styles.historyItem}>
+            <Text style={styles.historyDate}>{item.date}</Text>
+            <Text style={styles.historyType}>{item.drug} - {item.dosage}</Text>
+            <Text style={styles.historySummary}>Status: {item.status}</Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.placeholderText}>No prescription history recorded</Text>
+      )}
     </ScrollView>
   );
 
   const renderNotesTab = () => (
     <ScrollView contentContainerStyle={styles.tabContentContainer}>
       <Text style={styles.sectionTitle}>Doctor's Notes</Text>
-      {patient.notes.map((item, index) => (
-        <View key={index} style={styles.noteItem}>
-          <Text style={styles.noteDate}>{item.date} - by {item.author}</Text>
-          <Text style={styles.noteText}>{item.note}</Text>
-        </View>
-      ))}
-      <TouchableOpacity style={styles.actionButtonFull} onPress={() => alert('Add Note')}>
-        <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
-        <Text style={styles.actionButtonFullText}>Add Note</Text>
-      </TouchableOpacity>
+      {patient.notes && patient.notes.length > 0 ? (
+        patient.notes.map((item, index) => (
+          <View key={index} style={styles.noteItem}>
+            <Text style={styles.noteDate}>{item.date}</Text>
+            <Text style={styles.noteAuthor}>By: {item.author}</Text>
+            <Text style={styles.noteText}>{item.note}</Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.placeholderText}>No doctor's notes recorded</Text>
+      )}
     </ScrollView>
   );
 
@@ -483,6 +651,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#566573',
   },
+  noteAuthor: {
+    fontSize: 14,
+    color: '#566573',
+    marginBottom: 5,
+  },
   noteText: {
     fontSize: 15,
     color: '#7F8C8D',
@@ -507,6 +680,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
+  },
+  placeholderText: {
+    color: '#BDC3C7',
+    fontStyle: 'italic',
   },
 });
 

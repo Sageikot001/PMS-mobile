@@ -48,11 +48,12 @@ export const AuthProvider = ({ children }) => {
         setUser(parsedUser);
         setIsLoggedIn(true);
       } else {
-        // Auto-login with demo patient user for testing
-        await loginAsPatient();
+        // No auto-login - user should start at roles selection
+        setIsLoggedIn(false);
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
+      setIsLoggedIn(false);
     } finally {
       setLoading(false);
     }
@@ -149,6 +150,13 @@ export const AuthProvider = ({ children }) => {
         AsyncStorage.removeItem(AUTH_STORAGE_KEY),
         AsyncStorage.removeItem(USER_STORAGE_KEY),
         AsyncStorage.removeItem('@current_role'), // Doctor role key
+        AsyncStorage.removeItem('@doctor_data'), // Doctor data key
+        AsyncStorage.removeItem('@user_data'), // User data key
+        AsyncStorage.removeItem('@appointments'), // Appointments data
+        AsyncStorage.removeItem('@appointment_notifications'), // Notifications
+        AsyncStorage.removeItem('scheduledNotifications'), // Scheduled notifications
+        AsyncStorage.removeItem('sentNotifications'), // Sent notifications
+        AsyncStorage.removeItem('notificationHistory'), // Notification history
       ]);
 
       // Reset all auth state

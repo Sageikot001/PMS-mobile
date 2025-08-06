@@ -62,9 +62,8 @@ const DoctorHomeScreen = () => {
       const today = new Date().toISOString().split('T')[0];
       const allAppointments = await AppointmentService.getMyAppointments();
       const todaysAppts = allAppointments.filter(apt => {
-        // Convert appointmentDate to YYYY-MM-DD format for comparison
-        const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
-        return aptDate === today;
+        // Use utility method for consistent date comparison
+        return AppointmentService.isSameDay(apt.appointmentDate, today);
       });
       
       setTodaysAppointments(todaysAppts);

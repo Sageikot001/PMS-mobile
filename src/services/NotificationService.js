@@ -41,24 +41,70 @@ class NotificationService {
         throw new Error('Invalid date or time parameters');
       }
 
+      // Handle ISO date strings (convert to YYYY-MM-DD format)
+      let parsedDateStr = dateStr;
+      if (dateStr.includes('T') || dateStr.includes('Z')) {
+        console.log('📅 Converting ISO date string to YYYY-MM-DD:', dateStr);
+        const isoDate = new Date(dateStr);
+        if (!isNaN(isoDate.getTime())) {
+          // Use local date components to avoid timezone issues
+          const year = isoDate.getFullYear();
+          const month = String(isoDate.getMonth() + 1).padStart(2, '0');
+          const day = String(isoDate.getDate()).padStart(2, '0');
+          parsedDateStr = `${year}-${month}-${day}`;
+          console.log('📅 Converted to YYYY-MM-DD format:', parsedDateStr);
+        } else {
+          throw new Error('Invalid ISO date string');
+        }
+      }
+
       // Parse date (format: YYYY-MM-DD)
-      const [year, month, day] = dateStr.split('-').map(Number);
-      
-      // Parse time (format: HH:MM AM/PM)
-      const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (!timeMatch) {
-        throw new Error('Invalid time format');
+      const dateParts = parsedDateStr.split('-');
+      if (dateParts.length !== 3) {
+        throw new Error('Date must be in YYYY-MM-DD format');
       }
       
-      let [, hours, minutes, period] = timeMatch;
-      hours = parseInt(hours);
-      minutes = parseInt(minutes);
+      const [year, month, day] = dateParts.map(Number);
       
-      // Convert to 24-hour format
-      if (period.toUpperCase() === 'PM' && hours !== 12) {
-        hours += 12;
-      } else if (period.toUpperCase() === 'AM' && hours === 12) {
-        hours = 0;
+      if (!year || !month || !day || year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) {
+        throw new Error('Invalid date components');
+      }
+      
+      // Parse time - handle both 12-hour (HH:MM AM/PM) and 24-hour (HH:MM) formats
+      let hours, minutes, period;
+      
+      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+        // 12-hour format (e.g., "2:00 PM", "10:30 AM")
+        const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+        if (!timeMatch) {
+          throw new Error('Invalid 12-hour time format');
+        }
+        
+        [, hours, minutes, period] = timeMatch;
+        hours = parseInt(hours);
+        minutes = parseInt(minutes);
+        
+        // Convert to 24-hour format
+        if (period.toUpperCase() === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period.toUpperCase() === 'AM' && hours === 12) {
+          hours = 0;
+        }
+      } else {
+        // 24-hour format (e.g., "14:00", "09:30")
+        const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+        if (!timeMatch) {
+          throw new Error('Invalid 24-hour time format');
+        }
+        
+        [, hours, minutes] = timeMatch;
+        hours = parseInt(hours);
+        minutes = parseInt(minutes);
+      }
+      
+      // Validate hours and minutes
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        throw new Error('Invalid time values');
       }
       
       // Create date object (month is 0-indexed in JavaScript)
@@ -68,11 +114,22 @@ class NotificationService {
       if (isNaN(appointmentDate.getTime())) {
         throw new Error('Invalid date created');
       }
-      
+
+      console.log('📅 Successfully parsed appointment date/time:', {
+        originalDate: dateStr,
+        parsedDate: parsedDateStr,
+        time: timeStr,
+        result: appointmentDate.toLocaleString()
+      });
+
       return appointmentDate;
     } catch (error) {
-      console.error('Error parsing appointment date/time:', { dateStr, timeStr, error });
-      return null;
+      console.error('Error parsing appointment date/time:', {
+        dateStr,
+        timeStr,
+        error: error
+      });
+      throw error;
     }
   }
 

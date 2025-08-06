@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { forceLogout } = useAuth();
   
   // Default doctor profile data
   const defaultDoctorProfile = {
@@ -46,7 +49,7 @@ const ProfileScreen = () => {
     navigation.navigate('TelnyxTestScreen');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -55,9 +58,31 @@ const ProfileScreen = () => {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
-            // In a real app, you'd clear user session and navigate to login
-            Alert.alert('Logged Out', 'You have been logged out successfully');
+          onPress: async () => {
+            try {
+              // Clear all storage data
+              await Promise.all([
+                AsyncStorage.removeItem('@current_role'),
+                AsyncStorage.removeItem('@doctor_data'),
+                AsyncStorage.removeItem('@user_data'),
+                AsyncStorage.removeItem('@appointments'),
+                AsyncStorage.removeItem('@appointment_notifications'),
+                AsyncStorage.removeItem('scheduledNotifications'),
+                AsyncStorage.removeItem('sentNotifications'),
+                AsyncStorage.removeItem('notificationHistory'),
+              ]);
+              
+              console.log('🔐 Doctor logged out successfully');
+              
+              // Navigate back to the onboarding screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Onboarding' }],
+              });
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
           }
         }
       ]

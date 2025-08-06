@@ -3,26 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
-  ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
-  TextInput,
-  Linking,
-  ActivityIndicator,
+  ScrollView,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import * as Clipboard from 'expo-clipboard';
-import chatService from '../../services/ChatService';
-import notificationService from '../../services/NotificationService';
-import doctorService from '../../services/DoctorService';
-import meetingNotificationService from '../../services/MeetingNotificationService';
-import emailService from '../../services/EmailService';
-import googleMeetService from '../../services/GoogleMeetService';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AppointmentService from '../../services/AppointmentService';
-import { userData } from '../../data/dummyUser';
+import { useAuth } from '../../context/AuthContext';
 
 const AppointmentDetailsScreen = () => {
   const navigation = useNavigation();
@@ -39,6 +29,9 @@ const AppointmentDetailsScreen = () => {
   const [showCallOptionsModal, setShowCallOptionsModal] = useState(false);
   const [selectedCallType, setSelectedCallType] = useState('voice'); // 'voice' or 'video'
   const [updating, setUpdating] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
 
   // Initialize AppointmentService with doctor data
   useEffect(() => {
@@ -54,8 +47,9 @@ const AppointmentDetailsScreen = () => {
         
         // Add listener for appointment changes to enable real-time updates
         const appointmentListener = (event, data) => {
-          console.log('📅 Appointment event received:', event, data);
-          if (event === 'appointment_updated' && data.id === appointmentId) {
+          console.log('📅 Doctor appointment event received:', event, data);
+          if ((event === 'appointment_updated' || event === 'appointment_rescheduled') && data.id === appointmentId) {
+            console.log('📅 Refreshing appointment details due to event:', event);
             // Refresh appointment details when this specific appointment is updated
             loadAppointmentDetails();
           }
@@ -182,12 +176,12 @@ const AppointmentDetailsScreen = () => {
       const appointments = await AppointmentService.getAllAppointments();
       const appointmentData = appointments.find(apt => apt.id === appointmentId);
       
-      if (appointmentData) {
-        setAppointment(appointmentData);
-      } else {
-        Alert.alert('Error', 'Appointment not found');
-        navigation.goBack();
-      }
+    if (appointmentData) {
+      setAppointment(appointmentData);
+    } else {
+      Alert.alert('Error', 'Appointment not found');
+      navigation.goBack();
+    }
     } catch (error) {
       console.error('Error loading appointment details:', error);
       Alert.alert('Error', 'Failed to load appointment details');
@@ -204,7 +198,7 @@ const AppointmentDetailsScreen = () => {
     const now = new Date();
     const timeDiff = appointmentDateTime.getTime() - now.getTime();
     const minutesUntil = Math.floor(timeDiff / (1000 * 60));
-    
+
     setTimeUntilAppointment(minutesUntil);
   };
 
@@ -218,7 +212,7 @@ const AppointmentDetailsScreen = () => {
       case 'confirmed':
         return { text: 'Confirmed', color: '#28a745' };
       case 'cancelled':
-        return { text: 'Cancelled', color: '#dc3545' };
+      return { text: 'Cancelled', color: '#dc3545' };
       case 'completed':
         return { text: 'Completed', color: '#6c757d' };
       case 'rescheduled':
@@ -229,13 +223,18 @@ const AppointmentDetailsScreen = () => {
   };
 
   const canStartChat = () => {
-    // Chat is available once appointment is confirmed/scheduled
-    return appointment?.status === 'scheduled' || appointment?.status === 'confirmed';
+    // Chat is available once appointment is confirmed/scheduled/rescheduled
+    return appointment?.status === 'scheduled' || 
+           appointment?.status === 'confirmed' || 
+           appointment?.status === 'rescheduled';
   };
 
   const canStartCall = () => {
-    // Calls are available 10 minutes before appointment time
-    return (appointment?.status === 'scheduled' || appointment?.status === 'confirmed') && timeUntilAppointment <= 10;
+    // Calls are available 10 minutes before appointment time for confirmed appointments
+    const validStatuses = appointment?.status === 'scheduled' || 
+                         appointment?.status === 'confirmed' || 
+                         appointment?.status === 'rescheduled';
+    return validStatuses && timeUntilAppointment <= 10;
   };
 
   const handleAcceptAppointment = async () => {
@@ -384,7 +383,67 @@ const AppointmentDetailsScreen = () => {
 
   const handleRescheduleAppointment = () => {
     setShowRescheduleModal(true);
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setSelectedDate(tomorrow.toISOString().split('T')[0]);
   };
+
+  const handleDateSelect = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (selectedDate) {
+      setTempDate(selectedDate);
+      const dateString = selectedDate.toISOString().split('T')[0];
+      console.log('📅 Date selected:', dateString);
+      setSelectedDate(dateString);
+    }
+  };
+
+  const handleTimeSelect = (event, selectedTime) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    
+    if (selectedTime) {
+      const timeString = selectedTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      console.log('📅 Time selected:', timeString);
+      setSelectedTime(timeString);
+    }
+  };
+
+  const showDatePickerModal = () => {
+    console.log('📅 Opening native date picker');
+    setShowDatePicker(true);
+  };
+
+  const showTimePickerModal = () => {
+    console.log('📅 Opening native time picker');
+    setShowTimePicker(true);
+  };
+
+  // Generate available dates for the next 30 days
+  const generateAvailableDates = () => {
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 1; i <= 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push(date);
+    }
+    
+    console.log('📅 Generated available dates:', dates.length);
+    return dates;
+  };
+
+  const availableDates = generateAvailableDates();
 
   const handleSaveReschedule = async () => {
     if (!selectedDate || !selectedTime) {
@@ -395,30 +454,38 @@ const AppointmentDetailsScreen = () => {
     try {
       setUpdating(true);
       
-      // Combine date and time
-      const [year, month, day] = selectedDate.split('-');
-      const [hours, minutes] = selectedTime.split(':');
-      const newDateTime = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
-      
-      await AppointmentService.rescheduleAppointment(
+      console.log('📅 Doctor rescheduling appointment:', {
         appointmentId,
-        newDateTime.toISOString(),
+        selectedDate,
+        selectedTime,
+        reason: rescheduleReason || 'Rescheduled by doctor'
+      });
+      
+      // Call reschedule function with consistent date format
+      const updatedAppointment = await AppointmentService.rescheduleAppointment(
+        appointmentId,
+        selectedDate, // Already in YYYY-MM-DD format
         selectedTime,
         rescheduleReason || 'Rescheduled by doctor'
       );
       
-      setAppointment(prev => ({
-        ...prev,
-        appointmentDate: newDateTime.toISOString(),
-        appointmentTime: selectedTime,
-        status: 'rescheduled'
-      }));
+      // Update local state with the returned appointment data
+      setAppointment(updatedAppointment);
       
+      // Reset modal state
       setShowRescheduleModal(false);
-      Alert.alert('Success', 'Appointment rescheduled successfully! The patient has been notified.');
+      setSelectedDate('');
+      setSelectedTime('');
+      setRescheduleReason('');
+      
+      Alert.alert('Success', 'Appointment rescheduled successfully! The patient has been notified and the appointment is confirmed.');
+      
+      // Refresh appointment details to ensure sync
+      await loadAppointmentDetails();
+      
     } catch (error) {
       console.error('Error rescheduling appointment:', error);
-      Alert.alert('Error', 'Failed to reschedule appointment');
+      Alert.alert('Error', `Failed to reschedule appointment: ${error.message}`);
     } finally {
       setUpdating(false);
     }
@@ -433,6 +500,76 @@ const AppointmentDetailsScreen = () => {
     } catch (error) {
       console.error('Error completing appointment:', error);
       Alert.alert('Error', 'Failed to complete appointment');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRescheduleRequest = async (approved) => {
+    if (!appointment.rescheduleRequest) {
+      Alert.alert('Error', 'No reschedule request found');
+      return;
+    }
+
+    let doctorNotes = '';
+    if (!approved) {
+      // Prompt for rejection reason
+      Alert.prompt(
+        'Reject Reschedule Request',
+        'Please provide a reason for rejection:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+            onPress: async (reason) => {
+              if (reason?.trim()) {
+                try {
+                  setUpdating(true);
+                  await AppointmentService.handleRescheduleRequest(appointmentId, false, reason.trim());
+                  setAppointment(prev => ({
+                    ...prev,
+                    status: 'confirmed',
+                    rescheduleRequest: {
+                      ...prev.rescheduleRequest,
+                      status: 'rejected',
+                      doctorNotes: reason.trim()
+                    }
+                  }));
+                  Alert.alert('Success', 'Reschedule request rejected');
+                } catch (error) {
+                  console.error('Error rejecting reschedule request:', error);
+                  Alert.alert('Error', 'Failed to reject reschedule request');
+                } finally {
+                  setUpdating(false);
+                }
+              }
+            }
+          }
+        ],
+        'plain-text'
+      );
+      return;
+    }
+
+    // Approve the request
+    try {
+      setUpdating(true);
+      await AppointmentService.handleRescheduleRequest(appointmentId, true, 'Reschedule request approved');
+            setAppointment(prev => ({
+              ...prev,
+        appointmentDate: prev.rescheduleRequest.requestedDate,
+        appointmentTime: prev.rescheduleRequest.requestedTime,
+        status: 'rescheduled',
+        rescheduleRequest: {
+          ...prev.rescheduleRequest,
+          status: 'approved'
+        }
+      }));
+      Alert.alert('Success', 'Reschedule request approved');
+    } catch (error) {
+      console.error('Error approving reschedule request:', error);
+      Alert.alert('Error', 'Failed to approve reschedule request');
     } finally {
       setUpdating(false);
     }
@@ -501,7 +638,7 @@ const AppointmentDetailsScreen = () => {
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-vertical" size={24} color="#2C3E50" />
         </TouchableOpacity>
-      </View>
+        </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Patient Info Card */}
@@ -518,12 +655,12 @@ const AppointmentDetailsScreen = () => {
             </View>
             <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
               <Text style={styles.statusText}>{statusInfo.text}</Text>
-            </View>
-          </View>
+        </View>
+              </View>
           <View style={styles.clickHint}>
             <Ionicons name="chevron-forward" size={16} color="#7F8C8D" />
             <Text style={styles.clickHintText}>Tap to view patient details</Text>
-          </View>
+              </View>
         </TouchableOpacity>
 
         {/* Appointment Details Card */}
@@ -535,39 +672,39 @@ const AppointmentDetailsScreen = () => {
             <Text style={styles.infoText}>
               {new Date(appointment.appointmentDate).toLocaleDateString()}
             </Text>
-          </View>
+            </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="time" size={20} color="#4A90E2" />
+                <Ionicons name="time" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>
               {appointment.appointmentTime} ({appointment.duration || 30} min)
             </Text>
-          </View>
+              </View>
 
           {timeUntilAppointment !== null && (
             <View style={styles.infoRow}>
               <Ionicons name="hourglass" size={20} color="#fd7e14" />
               <Text style={styles.infoText}>{formatTimeUntilAppointment()}</Text>
-            </View>
+              </View>
           )}
           
           <View style={styles.infoRow}>
             <Ionicons name="call" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>{appointment.patientPhone}</Text>
-          </View>
+            </View>
 
           <View style={styles.infoRow}>
             <Ionicons name="mail" size={20} color="#4A90E2" />
             <Text style={styles.infoText}>{appointment.patientEmail}</Text>
-          </View>
-        </View>
+              </View>
+            </View>
 
         {/* Notes Card */}
         {appointment.notes && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Notes</Text>
             <Text style={styles.notesText}>{appointment.notes}</Text>
-          </View>
+              </View>
         )}
 
         {/* Reason Card */}
@@ -578,7 +715,7 @@ const AppointmentDetailsScreen = () => {
           </View>
         )}
 
-        {/* Action Buttons */}
+      {/* Action Buttons */}
         <View style={styles.actionsCard}>
           {appointment.status === 'pending' && (
             <>
@@ -590,21 +727,21 @@ const AppointmentDetailsScreen = () => {
                 {updating ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Ionicons name="checkmark-circle" size={24} color="#ffffff" />
+                <Ionicons name="checkmark-circle" size={24} color="#ffffff" />
                 )}
                 <Text style={styles.primaryButtonText}>
                   {updating ? 'Accepting...' : 'Accept Appointment'}
                 </Text>
-              </TouchableOpacity>
-              
+          </TouchableOpacity>
+          
               <TouchableOpacity 
                 style={styles.secondaryButton}
                 onPress={handleRescheduleAppointment}
               >
                 <Ionicons name="calendar" size={24} color="#4A90E2" />
                 <Text style={styles.secondaryButtonText}>Reschedule Appointment</Text>
-              </TouchableOpacity>
-              
+          </TouchableOpacity>
+          
               <TouchableOpacity 
                 style={[styles.rejectButton, updating && styles.disabledButton]}
                 onPress={handleRejectAppointment}
@@ -612,7 +749,7 @@ const AppointmentDetailsScreen = () => {
               >
                 <Ionicons name="close-circle" size={24} color="#ffffff" />
                 <Text style={styles.rejectButtonText}>Reject Appointment</Text>
-              </TouchableOpacity>
+          </TouchableOpacity>
             </>
           )}
 
@@ -626,7 +763,7 @@ const AppointmentDetailsScreen = () => {
                 <Ionicons name="chatbubble" size={24} color="#ffffff" />
                 <Text style={styles.primaryButtonText}>Start Chat</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity 
                 style={[styles.secondaryButton, !canStartCall() && styles.disabledButton]}
                 onPress={handleVoiceCall}
@@ -645,6 +782,14 @@ const AppointmentDetailsScreen = () => {
                 <Text style={styles.secondaryButtonText}>Video Call</Text>
               </TouchableOpacity>
               
+              <TouchableOpacity 
+                style={styles.secondaryButton}
+                onPress={handleRescheduleAppointment}
+              >
+                <Ionicons name="calendar" size={24} color="#4A90E2" />
+                <Text style={styles.secondaryButtonText}>Reschedule Appointment</Text>
+              </TouchableOpacity>
+              
               {timeUntilAppointment <= 0 && (
                 <TouchableOpacity 
                   style={styles.completeButton}
@@ -657,13 +802,92 @@ const AppointmentDetailsScreen = () => {
             </>
           )}
 
+          {appointment.status === 'reschedule_requested' && appointment.rescheduleRequest && (
+            <>
+              <View style={styles.rescheduleRequestCard}>
+                <Text style={styles.rescheduleRequestTitle}>Reschedule Request</Text>
+                <Text style={styles.rescheduleRequestText}>
+                  Patient requests: {AppointmentService.formatDateForDisplay(appointment.rescheduleRequest.requestedDate)} at {appointment.rescheduleRequest.requestedTime}
+                </Text>
+                {appointment.rescheduleRequest.reason && (
+                  <Text style={styles.rescheduleRequestReason}>
+                    Reason: {appointment.rescheduleRequest.reason}
+                  </Text>
+                )}
+              </View>
+              
+              <TouchableOpacity 
+                style={[styles.primaryButton, updating && styles.disabledButton]}
+                onPress={() => handleRescheduleRequest(true)}
+                disabled={updating}
+              >
+                {updating ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="checkmark-circle" size={24} color="#ffffff" />
+                )}
+                <Text style={styles.primaryButtonText}>
+                  {updating ? 'Approving...' : 'Approve Request'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.rejectButton, updating && styles.disabledButton]}
+                onPress={() => handleRescheduleRequest(false)}
+                disabled={updating}
+              >
+                <Ionicons name="close-circle" size={24} color="#ffffff" />
+                <Text style={styles.rejectButtonText}>Reject Request</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.secondaryButton}
+                onPress={handleRescheduleAppointment}
+              >
+                <Ionicons name="calendar" size={24} color="#4A90E2" />
+                <Text style={styles.secondaryButtonText}>Suggest Different Time</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {appointment.status === 'rescheduled' && (
+            <>
+              <View style={styles.rescheduleInfoCard}>
+                <Text style={styles.rescheduleInfoTitle}>Appointment Rescheduled</Text>
+                <Text style={styles.rescheduleInfoText}>
+                  New time: {AppointmentService.formatDateForDisplay(appointment.appointmentDate)} at {appointment.appointmentTime}
+                </Text>
+                <Text style={styles.rescheduleInfoText}>
+                  Status: Pending patient acceptance
+                </Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={[styles.primaryButton, !canStartChat() && styles.disabledButton]}
+                onPress={handleStartChat}
+                disabled={!canStartChat()}
+              >
+                <Ionicons name="chatbubble" size={24} color="#ffffff" />
+                <Text style={styles.primaryButtonText}>Start Chat</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.secondaryButton}
+                onPress={handleRescheduleAppointment}
+              >
+                <Ionicons name="calendar" size={24} color="#4A90E2" />
+                <Text style={styles.secondaryButtonText}>Reschedule Again</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
           {appointment.status === 'cancelled' && (
             <View style={styles.cancelledMessage}>
               <Ionicons name="close-circle" size={48} color="#dc3545" />
               <Text style={styles.cancelledTitle}>Appointment Cancelled</Text>
               <Text style={styles.cancelledSubtitle}>This appointment has been cancelled and removed from the queue.</Text>
-            </View>
-          )}
+        </View>
+      )}
 
           {appointment.status === 'completed' && (
             <View style={styles.completedMessage}>
@@ -684,57 +908,50 @@ const AppointmentDetailsScreen = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reschedule Appointment</Text>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Reschedule Appointment</Text>
               <TouchableOpacity 
                 onPress={() => setShowRescheduleModal(false)}
                 style={styles.closeModalButton}
               >
                 <Ionicons name="close" size={24} color="#2C3E50" />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
+          </View>
 
             <ScrollView style={styles.modalBody}>
               {/* Date Selection */}
-              <Text style={styles.modalSectionTitle}>Select New Date</Text>
-              <TextInput
+            <Text style={styles.modalSectionTitle}>Select New Date</Text>
+              <TouchableOpacity
                 style={styles.dateInput}
-                placeholder="YYYY-MM-DD"
-                value={selectedDate}
-                onChangeText={setSelectedDate}
-              />
+                onPress={showDatePickerModal}
+              >
+                <Text style={styles.dateInputText}>
+                  {selectedDate ? new Date(selectedDate).toLocaleDateString() : 'Select Date'}
+                </Text>
+                <Ionicons name="calendar" size={20} color="#4A90E2" />
+              </TouchableOpacity>
 
               {/* Time Selection */}
               <Text style={styles.modalSectionTitle}>Select New Time</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeSlotsContainer}>
-                {getAvailableTimeSlots().map((slot, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.timeSlot,
-                      selectedTime === slot.time24 && styles.selectedTimeSlot
-                    ]}
-                    onPress={() => setSelectedTime(slot.time24)}
-                  >
-                    <Text style={[
-                      styles.timeSlotText,
-                      selectedTime === slot.time24 && styles.selectedTimeSlotText
-                    ]}>
-                      {slot.time12}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <TouchableOpacity
+                style={styles.dateInput}
+                onPress={showTimePickerModal}
+              >
+                <Text style={styles.dateInputText}>
+                  {selectedTime ? selectedTime : 'Select Time'}
+                </Text>
+                <Ionicons name="time" size={20} color="#4A90E2" />
+              </TouchableOpacity>
 
               {/* Reason */}
               <Text style={styles.modalSectionTitle}>Reason for Rescheduling</Text>
-              <TextInput
-                style={styles.reasonInput}
-                placeholder="Enter reason for rescheduling..."
-                value={rescheduleReason}
-                onChangeText={setRescheduleReason}
-                multiline
-                numberOfLines={3}
+            <TextInput
+              style={styles.reasonInput}
+              placeholder="Enter reason for rescheduling..."
+              value={rescheduleReason}
+              onChangeText={setRescheduleReason}
+              multiline
+              numberOfLines={3}
               />
             </ScrollView>
 
@@ -756,6 +973,130 @@ const AppointmentDetailsScreen = () => {
         </View>
       </Modal>
 
+      {/* Native Date Picker for Android */}
+      {showDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={tempDate}
+          mode="date"
+          display="default"
+          minimumDate={new Date()}
+          maximumDate={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
+          onChange={handleDateSelect}
+        />
+      )}
+
+      {/* Native Time Picker for Android */}
+      {showTimePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={tempDate}
+          mode="time"
+          is24Hour={false}
+          display="default"
+          onChange={handleTimeSelect}
+        />
+      )}
+
+      {/* iOS Date Picker Modal */}
+      {showDatePicker && Platform.OS === 'ios' && (
+        <Modal
+          visible={showDatePicker}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Date</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowDatePicker(false)}
+                  style={styles.closeModalButton}
+                >
+                  <Ionicons name="close" size={24} color="#2C3E50" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                <Text style={styles.modalSubtitle}>Select a date for the new appointment</Text>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  maximumDate={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
+                  onChange={handleDateSelect}
+                />
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.saveButtonText}>Save Date</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* iOS Time Picker Modal */}
+      {showTimePicker && Platform.OS === 'ios' && (
+        <Modal
+          visible={showTimePicker}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Time</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowTimePicker(false)}
+                  style={styles.closeModalButton}
+                >
+                  <Ionicons name="close" size={24} color="#2C3E50" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                <Text style={styles.modalSubtitle}>Select a time for the new appointment</Text>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="time"
+                  display="spinner"
+                  is24Hour={false}
+                  onChange={handleTimeSelect}
+                />
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowTimePicker(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={() => setShowTimePicker(false)}
+                >
+                  <Text style={styles.saveButtonText}>Save Time</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* Call Options Modal */}
       <Modal
         visible={showCallOptionsModal}
@@ -765,36 +1106,36 @@ const AppointmentDetailsScreen = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
+          <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Choose Call Method</Text>
               <TouchableOpacity 
                 onPress={() => setShowCallOptionsModal(false)}
                 style={styles.closeModalButton}
               >
                 <Ionicons name="close" size={24} color="#2C3E50" />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
+          </View>
 
             <ScrollView style={styles.modalBody}>
-              {callOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.id}
+            {callOptions.map((option) => (
+              <TouchableOpacity
+                key={option.id}
                   style={styles.callOption}
-                  onPress={() => handleCallOptionSelect(option)}
-                >
-                  <View style={[styles.callOptionIcon, { backgroundColor: option.color }]}>
+                onPress={() => handleCallOptionSelect(option)}
+              >
+                <View style={[styles.callOptionIcon, { backgroundColor: option.color }]}>
                     <Ionicons name={option.icon} size={20} color="white" />
-                  </View>
-                  <View style={styles.callOptionContent}>
-                    <Text style={styles.callOptionName}>{option.name}</Text>
-                    <Text style={styles.callOptionDescription}>{option.description}</Text>
-                  </View>
+                </View>
+                <View style={styles.callOptionContent}>
+                  <Text style={styles.callOptionName}>{option.name}</Text>
+                  <Text style={styles.callOptionDescription}>{option.description}</Text>
+                </View>
                   <Ionicons name="chevron-forward" size={20} color="#7F8C8D" />
-                </TouchableOpacity>
-              ))}
+              </TouchableOpacity>
+            ))}
             </ScrollView>
-          </View>
-        </View>
+              </View>
+            </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1077,12 +1418,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: '#E9ECEF',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
+  },
+  dateInputText: {
+    flex: 1,
+    marginRight: 10,
+    color: '#2C3E50',
   },
   timeSlotsContainer: {
     marginBottom: 16,
@@ -1173,6 +1522,122 @@ const styles = StyleSheet.create({
   callOptionDescription: {
     fontSize: 14,
     color: '#7F8C8D',
+  },
+  datePicker: {
+    width: '100%',
+    height: 50,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  dateGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    padding: 8,
+  },
+  dateGridItem: {
+    width: '30%', // Increased width for better touch targets
+    height: 80, // Fixed height for consistent layout
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    backgroundColor: '#ffffff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  dateGridDay: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  dateGridDate: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 2,
+  },
+  dateGridMonth: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    fontWeight: '500',
+  },
+  selectedDateGridItem: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+    elevation: 4,
+    shadowOpacity: 0.2,
+  },
+  selectedDateGridDay: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  selectedDateGridDate: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+  selectedDateGridMonth: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  rescheduleRequestCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  rescheduleRequestTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 8,
+  },
+  rescheduleRequestText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginBottom: 4,
+  },
+  rescheduleRequestReason: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginTop: 4,
+  },
+  rescheduleInfoCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  rescheduleInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 8,
+  },
+  rescheduleInfoText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginBottom: 4,
   },
 });
 

@@ -5,7 +5,7 @@ import DoctorHomeScreen from '../screens/doctor/HomeScreen';
 import DoctorPatientsScreen from '../screens/doctor/PatientsScreen';
 import DoctorAppointmentsScreen from '../screens/doctor/AppointmentsScreen';
 import DoctorEarningsScreen from '../screens/doctor/EarningsScreen';
-import DoctorProfileScreen from '../screens/doctor/ProfileScreen';
+import ProfileScreen from '../screens/doctor/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -51,7 +51,7 @@ const DoctorTabNavigator = () => {
       <Tab.Screen name="Patients" component={DoctorPatientsScreen} />
       <Tab.Screen name="Appointments" component={DoctorAppointmentsScreen} />
       <Tab.Screen name="Earnings" component={DoctorEarningsScreen} />
-      <Tab.Screen name="Profile" component={DoctorProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };

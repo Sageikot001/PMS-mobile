@@ -56,9 +56,10 @@ const UserCalendar = ({ selectedDate, onDatePress, appointmentDates = [] }) => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
+  // Use AppointmentService.getDateString for consistency with the rest of the app
   const formatDateKey = (date) => {
     if (!date) return '';
-    return date.toISOString().split('T')[0];
+    return AppointmentService.getDateString(date);
   };
 
   const hasAppointment = (date) => {
@@ -146,22 +147,61 @@ const UserAppointments = ({ navigation }) => {
     React.useCallback(() => {
       loadAppointments();
       loadNotifications();
+      
+      // Add listener for real-time updates
+      const appointmentListener = (event, data) => {
+        console.log('📅 Patient appointment event received:', event, data);
+        console.log('📅 Current appointment dates before update:', appointmentDates); // Added debug
+        if (event === 'appointment_updated' || event === 'appointment_rescheduled' || event === 'appointment_cancelled') { // Added appointment_cancelled
+          console.log('📅 Refreshing appointments due to event:', event); // Added debug
+          
+          // Special handling for reschedule events
+          if (event === 'appointment_rescheduled' && data) {
+            console.log('📅 Processing reschedule event:', {
+              appointmentId: data.id,
+              newDate: data.appointmentDate,
+              newTime: data.appointmentTime,
+              status: data.status,
+              rescheduleInfo: data.rescheduleInfo
+            });
+          }
+          
+          loadAppointments();
+          loadNotifications();
+        }
+      };
+      
+      AppointmentService.addListener(appointmentListener);
+      
+      // Cleanup listener on unmount
+      return () => {
+        AppointmentService.removeListener(appointmentListener);
+      };
     }, [])
   );
 
   const loadAppointments = async () => {
     try {
       setLoading(true);
+      console.log('📅 Loading appointments for patient...');
+      
       const allAppointments = await AppointmentService.getMyAppointments();
+      console.log('📅 Raw appointments from service:', allAppointments);
+      
       setAppointments(allAppointments);
       
-      // Extract dates that have appointments
-      const dates = allAppointments.map(apt => 
-        new Date(apt.appointmentDate).toISOString().split('T')[0]
-      );
-      setAppointmentDates([...new Set(dates)]);
+      // Extract dates that have appointments - use consistent date handling
+      const dates = allAppointments.map(apt => {
+        const dateString = AppointmentService.getDateString(apt.appointmentDate);
+        console.log(`📅 Appointment ${apt.id}: ${apt.appointmentDate} -> ${dateString}`);
+        return dateString;
+      }).filter(date => date !== null);
       
-      console.log(`📅 Loaded ${allAppointments.length} appointments for ${currentRole}`);
+      const uniqueDates = [...new Set(dates)];
+      console.log('📅 Unique appointment dates:', uniqueDates);
+      setAppointmentDates(uniqueDates);
+      
+      console.log(`📅 Loaded ${allAppointments.length} appointments for patient`);
     } catch (error) {
       console.error('Error loading appointments:', error);
       Alert.alert('Error', 'Failed to load appointments');
@@ -190,18 +230,9 @@ const UserAppointments = ({ navigation }) => {
   };
 
   const handleAppointmentPress = (appointment) => {
-    Alert.alert(
-      'Appointment Details',
-      `Doctor: ${appointment.doctorName}\nDate: ${new Date(appointment.appointmentDate).toLocaleDateString()}\nTime: ${appointment.appointmentTime}\nStatus: ${appointment.status}\nReason: ${appointment.reason}`,
-      [
-        { text: 'OK' },
-        { 
-          text: 'Cancel Appointment', 
-          style: 'destructive',
-          onPress: () => handleCancelAppointment(appointment)
-        }
-      ]
-    );
+    navigation.navigate('PatientAppointmentDetails', { 
+      appointmentId: appointment.id 
+    });
   };
 
   const handleCancelAppointment = (appointment) => {
@@ -243,10 +274,8 @@ const UserAppointments = ({ navigation }) => {
 
   const getSelectedDateAppointments = () => {
     if (!selectedDate) return [];
-    const selectedDateStr = selectedDate.toISOString().split('T')[0];
     return appointments.filter(apt => {
-      const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
-      return aptDate === selectedDateStr;
+      return AppointmentService.isSameDay(apt.appointmentDate, selectedDate);
     });
   };
 
@@ -377,6 +406,7 @@ const UserAppointments = ({ navigation }) => {
 
             {/* Calendar */}
             <UserCalendar
+              key={`calendar-${appointmentDates.join('-')}`} // Force re-render when dates change
               selectedDate={selectedDate}
               onDatePress={handleDatePress}
               appointmentDates={appointmentDates}
