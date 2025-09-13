@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import AppointmentService, { APPOINTMENT_STATUS } from '../../services/AppointmentService';
+import { AppointmentService, APPOINTMENT_STATUS } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 
 const { width } = Dimensions.get('window');

@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import chatService from '../../services/ChatService';
-import notificationService from '../../services/NotificationService';
+import { chatService, notificationService } from '../../lib/api';
 
 const ChatListScreen = () => {
   const navigation = useNavigation();

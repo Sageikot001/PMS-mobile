@@ -9,8 +9,7 @@ import {
   TextInput,
   SafeAreaView
 } from 'react-native';
-import chatService from '../services/ChatService';
-import telnyxService from '../services/TelnyxService';
+import { chatService, telnyxService } from '../lib/api';
 import { getTelnyxInitConfig } from '../config/TelnyxConfig';
 
 const TelnyxTestScreen = ({ navigation }) => {

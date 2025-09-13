@@ -35,6 +35,11 @@ export const telnyxConfig = {
   debug: getEnvVariable('TELNYX_DEBUG', 'true') === 'true',
 };
 
+// API Configuration
+export const apiConfig = {
+  apiKey: getEnvVariable('X_API_KEY', 'GCMUDiuY5a7WvyUNt9n3QztToSHzK7Uj'),
+};
+
 // Function to check if we're in development or production environment
 export const isDevelopment = () => {
   return __DEV__;
@@ -51,6 +56,9 @@ export const ENV = {
   TELNYX_SIP_PASSWORD: telnyxConfig.sipPassword,
   TELNYX_API_KEY: telnyxConfig.apiKey,
   TELNYX_DEBUG: telnyxConfig.debug,
+  
+  // API
+  X_API_KEY: apiConfig.apiKey,
   
   // Environment
   IS_DEVELOPMENT: isDevelopment(),

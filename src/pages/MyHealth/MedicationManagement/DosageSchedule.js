@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import HealthDataService from '../../../services/HealthDataService';
+import { HealthDataService } from '../../../lib/api';
 
 const DosageSchedule = () => {
   const navigation = useNavigation();

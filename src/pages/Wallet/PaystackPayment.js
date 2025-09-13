@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PAYSTACK_PUBLIC_KEY, mockVerifyTransaction } from '../../services/PaystackService';
+import { PAYSTACK_PUBLIC_KEY, paystack as PaystackService } from '../../lib/api';
 
 /**
  * PaystackPayment Component
@@ -23,7 +23,7 @@ const PaystackPayment = () => {
   const handlePaymentComplete = async (paymentData) => {
     try {
       // For development, simulate successful payment verification
-      await mockVerifyTransaction(paymentData.reference);
+      await PaystackService.mockVerifyTransaction(paymentData.reference);
       
       // Store transaction info in AsyncStorage for the wallet to display
       try {

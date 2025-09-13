@@ -30,7 +30,8 @@
       "TELNYX_SIP_USER": "dev_user",
       "TELNYX_SIP_PASSWORD": "dev_password",
       "TELNYX_API_KEY": "dev_api_key",
-      "TELNYX_DEBUG": "true"
+      "TELNYX_DEBUG": "true",
+      "X_API_KEY": "GCMUDiuY5a7WvyUNt9n3QztToSHzK7Uj"
     }
   }
 }

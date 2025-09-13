@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import ProfileService from '../../services/ProfileService';
+import { profile as ProfileService } from '../../lib/api';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const SecuritySettings = ({ navigation }) => {

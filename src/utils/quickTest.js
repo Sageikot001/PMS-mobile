@@ -1,8 +1,5 @@
 import { Alert } from 'react-native';
-import ApiService from '../services/ApiService';
-import AuthService from '../services/AuthService';
-import UserManagementService, { USER_TYPES } from '../services/UserManagementService';
-import HealthDataService, { HEALTH_METRIC_TYPES, WELLNESS_CALCULATION_TYPES } from '../services/HealthDataService';
+import api, { ApiService, AuthService, UserManagementService, USER_TYPES, HealthDataService, HEALTH_METRIC_TYPES, WELLNESS_CALCULATION_TYPES } from '../lib/api';
 
 /**
  * Quick Test Script for Integration Verification

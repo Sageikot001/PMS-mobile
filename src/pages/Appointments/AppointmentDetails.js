@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import AppointmentService from '../../services/AppointmentService';
+import { AppointmentService } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 
 const PatientAppointmentDetails = () => {

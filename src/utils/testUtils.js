@@ -1,6 +1,4 @@
-import ApiService from '../services/ApiService';
-import UserManagementService, { USER_TYPES, USER_STATUS } from '../services/UserManagementService';
-import AuthService from '../services/AuthService';
+import { ApiService, UserManagementService, USER_TYPES, USER_STATUS, AuthService } from '../lib/api';
 
 /**
  * Testing utilities for API integration and user management

@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ConsultationActions from '../../../components/ConsultationActions';
-import HealthDataService, { WELLNESS_CALCULATION_TYPES, HEALTH_METRIC_TYPES } from '../../../services/HealthDataService';
-import HealthActivityService, { ACTIVITY_TYPES } from '../../../services/HealthActivityService';
+import { HealthDataService, WELLNESS_CALCULATION_TYPES, HEALTH_METRIC_TYPES, HealthActivityService, ACTIVITY_TYPES } from '../../../lib/api';
 
 const BMICalculator = () => {
   const navigation = useNavigation();

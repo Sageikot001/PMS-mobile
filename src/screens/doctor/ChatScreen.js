@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import chatService from '../../services/ChatService';
+import { chatService } from '../../lib/api';
 
 const ChatScreen = () => {
   const navigation = useNavigation();

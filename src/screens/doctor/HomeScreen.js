@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; // For avatar placeholder
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
-import notificationService from '../../services/NotificationService';
-import AppointmentService from '../../services/AppointmentService';
+import { notificationService, AppointmentService } from '../../lib/api';
 import { userData } from '../../data/dummyUser';
 
 // Mock data for recent patients - patients who recently had appointments

@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 // Import Cart Context
 import { CartProvider } from './src/context/CartContext';
+import { ApiProvider } from './src/context/ApiContext';
 
 // Import Error Boundary
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -195,9 +196,11 @@ export default function App() {
     <SafeAreaProvider>
       <ErrorBoundary>
       <AuthProvider>
-        <CartProvider>
-          <AppNavigator />
-        </CartProvider>
+        <ApiProvider>
+          <CartProvider>
+            <AppNavigator />
+          </CartProvider>
+        </ApiProvider>
       </AuthProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

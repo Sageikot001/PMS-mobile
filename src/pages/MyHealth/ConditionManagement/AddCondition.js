@@ -12,7 +12,7 @@ import {
   Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import HealthDataService from '../../../services/HealthDataService';
+import { HealthDataService } from '../../../lib/api';
 
 const conditions = [
   { 

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import HealthCard from './components/HealthCard';
-import HealthDataService, { HEALTH_METRIC_TYPES } from '../../services/HealthDataService';
-import HealthActivityService, { ACTIVITY_TYPES } from '../../services/HealthActivityService';
+import { HealthDataService, HEALTH_METRIC_TYPES, HealthActivityService, ACTIVITY_TYPES } from '../../lib/api';
 import { InlineLoading } from '../../components/LoadingState';
 
 const MyHealth = () => {

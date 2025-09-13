@@ -15,7 +15,7 @@ import WeightInput from '../../../components/WeightInput';
 import HeightInput from '../../../components/HeightInput';
 import ActivityLevelSelector from '../../../components/ActivityLevelSelector';
 import CalorieResults from '../../../components/CalorieResults';
-import HealthDataService, { WELLNESS_CALCULATION_TYPES } from '../../../services/HealthDataService';
+import { HealthDataService, WELLNESS_CALCULATION_TYPES } from '../../../lib/api';
 
 const CalorieCalculator = () => {
   const navigation = useNavigation();

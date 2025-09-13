@@ -14,7 +14,7 @@ import { providers } from '../../data/providers';
 import HealthcareProviderCard from '../../components/cards/HealthcareProviderCard';
 import { userData } from '../../data/dummyUser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AppointmentService from '../../services/AppointmentService';
+import { AppointmentService } from '../../lib/api';
 
 const SORT_OPTIONS = [
   { id: 'rating', label: 'Highest Rating' },

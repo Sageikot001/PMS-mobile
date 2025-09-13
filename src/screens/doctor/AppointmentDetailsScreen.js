@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import AppointmentService from '../../services/AppointmentService';
+import { AppointmentService } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 
 const AppointmentDetailsScreen = () => {

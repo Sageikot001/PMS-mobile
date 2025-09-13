@@ -10,7 +10,7 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import HealthDataService, { MEDICATION_STATUS } from '../../../services/HealthDataService';
+import { HealthDataService, MEDICATION_STATUS } from '../../../lib/api';
 
 const MedicationManagement = () => {
   const navigation = useNavigation();

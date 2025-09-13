@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import AppointmentService, { APPOINTMENT_TYPES } from '../../services/AppointmentService';
+import { AppointmentService, APPOINTMENT_TYPES } from '../../lib/api';
 
 const BookAppointment = ({ route, navigation }) => {
   const { provider } = route.params;

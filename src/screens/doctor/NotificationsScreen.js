@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import notificationService from '../../services/NotificationService';
+import { notificationService } from '../../lib/api';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();

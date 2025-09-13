@@ -13,7 +13,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import OvulationCalendar from '../../../components/OvulationCalendar';
 import OvulationTracker from '../../../components/OvulationTracker';
-import HealthDataService, { WELLNESS_CALCULATION_TYPES } from '../../../services/HealthDataService';
+import { HealthDataService, WELLNESS_CALCULATION_TYPES } from '../../../lib/api';
 
 const OvulationCalculator = () => {
   const navigation = useNavigation();

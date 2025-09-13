@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import ProfileService from '../../services/ProfileService';
+import { profile as ProfileService } from '../../lib/api';
 
 const PersonalDetails = ({ navigation }) => {
   const { user, updateProfile } = useAuth();

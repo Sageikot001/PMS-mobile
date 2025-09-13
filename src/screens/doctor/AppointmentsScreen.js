@@ -14,11 +14,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import notificationService from '../../services/NotificationService';
-import AppointmentService, { APPOINTMENT_STATUS } from '../../services/AppointmentService';
+import { notificationService, AppointmentService, APPOINTMENT_STATUS } from '../../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userData } from '../../data/dummyUser';
-import BackendService from '../../services/BackendService';
+import { BackendService } from '../../lib/api';
 
 const { height: screenHeight } = Dimensions.get('window');
 

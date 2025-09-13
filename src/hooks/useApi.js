@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
-import ApiService from '../services/ApiService';
+import { ApiService } from '../lib/api';
 
 // Custom hook for API calls with loading states and error handling
 export const useApi = (apiFunction, initialData = null, executeOnMount = false) => {

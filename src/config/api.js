@@ -1,8 +1,8 @@
 import { isDevelopment } from './env';
 
 // Define API URLs for different environments
-const DEV_API_URL = 'http://localhost:3000/api';
-const PROD_API_URL = 'https://carepoint-api.yourdomain.com/api'; // Replace with your production API URL
+const DEV_API_URL = 'http://192.168.1.100:3000/api/v1'; // Replace 192.168.1.100 with your actual IP
+const PROD_API_URL = 'https://carepoint-api.yourdomain.com/api/v1'; // Replace with your production API URL
 
 // Export the appropriate API URL based on environment
 export const API_URL = isDevelopment() ? DEV_API_URL : PROD_API_URL;

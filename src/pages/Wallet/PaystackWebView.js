@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as PaystackService from '../../services/PaystackService';
+import { paystack as PaystackService } from '../../lib/api';
 
 const PaystackWebView = () => {
   const navigation = useNavigation();

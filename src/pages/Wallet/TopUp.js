@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { generateReference } from '../../services/PaystackService';
+import { paystack as PaystackService } from '../../lib/api';
 
 const TopUp = () => {
   const navigation = useNavigation();
@@ -24,7 +24,7 @@ const TopUp = () => {
 
     const email = 'user@example.com'; // Replace with actual user email
     const paystackAmount = parseFloat(amount);
-    const reference = generateReference();
+    const reference = PaystackService.generateReference();
 
     navigation.navigate('PaystackPayment', {
       amount: paystackAmount,

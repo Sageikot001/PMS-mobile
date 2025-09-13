@@ -12,7 +12,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
-import HealthDataService, { HEALTH_METRIC_TYPES } from '../../services/HealthDataService';
+import { HealthDataService, HEALTH_METRIC_TYPES } from '../../lib/api';
 
 const HealthMetricDetail = () => {
   const route = useRoute();

@@ -18,9 +18,8 @@ import {
   LoadingButton,
   InlineLoading,
 } from './LoadingState';
-import AuthService, { getCreatedUsers, clearCreatedUsers } from '../services/AuthService';
+import { AuthService, HealthDataService, HEALTH_METRIC_TYPES, WELLNESS_CALCULATION_TYPES } from '../lib/api';
 import TestUtils from '../utils/testUtils';
-import HealthDataService, { HEALTH_METRIC_TYPES, WELLNESS_CALCULATION_TYPES } from '../services/HealthDataService';
 
 // Mock data for demo purposes
 const MOCK_USER_STATS = {
@@ -167,7 +166,7 @@ const UserManagementExample = ({ navigation }) => {
   // Function to load available accounts
   const loadAvailableAccounts = async () => {
     try {
-      const accounts = await getCreatedUsers();
+      const accounts = await AuthService.getCreatedUsers?.() || [];
       setAvailableAccounts(accounts);
     } catch (error) {
       console.error('Error loading available accounts:', error);
@@ -548,7 +547,7 @@ const UserManagementExample = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await clearCreatedUsers();
+              await AuthService.clearCreatedUsers?.();
               setAvailableAccounts([]);
               Alert.alert('Success', 'All created accounts have been cleared.');
             } catch (error) {
