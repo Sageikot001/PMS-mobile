@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -12,22 +12,20 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import axios from 'axios';
-import { API_URL, ENDPOINTS } from '../../config/api';
+import { AuthContext } from '../../context/AuthContext';
 import logo from '../../../assets/logo.png';
 
 const ForgotPassword = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const { forgotPassword, isLoading, error } = useContext(AuthContext);
 
-  // Validate email format
-  const validateEmail = (email) => {
+  const validateEmail = (value) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('Email is  d');
+    if (!value) {
+      setEmailError('Email is required');
       return false;
-    } else if (!emailRegex.test(email)) {
+    } else if (!emailRegex.test(value)) {
       setEmailError('Invalid email format');
       return false;
     }
@@ -35,33 +33,21 @@ const ForgotPassword = ({ navigation }) => {
     return true;
   };
 
-  // Handle reset password request
   const handleResetPassword = async () => {
     if (!validateEmail(email)) return;
-
-    setLoading(true);
     try {
-      // We'll just simulate this for now
-      // In a real app, you would call the API endpoint
-      // await axios.post(`${API_URL}${ENDPOINTS.AUTH.RESET_PASSWORD}`, { email });
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await forgotPassword(email.trim());
       Alert.alert(
         'Reset Email Sent',
         'If an account exists with this email, you will receive password reset instructions.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
-    } catch (error) {
-      // Even if there's an error, we don't want to reveal if the email exists
+    } catch (_) {
       Alert.alert(
         'Reset Email Sent',
         'If an account exists with this email, you will receive password reset instructions.',
         [{ text: 'OK' }]
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -72,42 +58,45 @@ const ForgotPassword = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoContainer}>
-          <Image
-            source={logo}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Image source={logo} style={styles.logo} resizeMode='contain' />
         </View>
 
         <Text style={styles.title}>Forgot Password</Text>
         <Text style={styles.subtitle}>
-          Enter your email and we'll send you instructions to reset your password
+          Enter your email and we'll send you instructions to reset your
+          password
         </Text>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
+              placeholder='Enter your email'
+              keyboardType='email-address'
+              autoCapitalize='none'
               value={email}
               onChangeText={setEmail}
               onBlur={() => validateEmail(email)}
             />
-            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+            {emailError ? (
+              <Text style={styles.errorText}>{emailError}</Text>
+            ) : null}
           </View>
 
           <TouchableOpacity
             style={styles.resetButton}
             onPress={handleResetPassword}
-            disabled={loading}
+            disabled={isLoading}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
+            {isLoading ? (
+              <ActivityIndicator color='#fff' size='small' />
             ) : (
-              <Text style={styles.resetButtonText}>Send Reset Instructions</Text>
+              <Text style={styles.resetButtonText}>
+                Send Reset Instructions
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -197,4 +186,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ForgotPassword; 
+export default ForgotPassword;

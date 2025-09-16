@@ -100,86 +100,128 @@ const MainLayout = ({ navigation }) => {
 
   return (
     <ErrorBoundary>
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {renderScreen()}
-      </View>
-      <BottomNav activeTab={activeTab} onTabPress={setActiveTab} navigation={navigation} />
-      <StatusBar style="auto" />
-    </SafeAreaView>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>{renderScreen()}</View>
+        <BottomNav
+          activeTab={activeTab}
+          onTabPress={setActiveTab}
+          navigation={navigation}
+        />
+        <StatusBar style='auto' />
+      </SafeAreaView>
     </ErrorBoundary>
   );
 };
 
 // Main navigation component
 const AppNavigator = () => {
-  const { isLoggedIn } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   return (
     <NavigationContainer>
-      {isLoggedIn ? (
+      {isAuthenticated ? (
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
             animation: 'slide_from_right',
           }}
         >
-          <Stack.Screen name="MainLayout" component={MainLayout} />
-          <Stack.Screen name="Categories" component={Categories} />
-          <Stack.Screen name="CategoryDetails" component={CategoryDetails} />
-          <Stack.Screen name="PharmacyDetail" component={PharmacyDetail} />
-          <Stack.Screen name="Cart" component={Cart} />
-          <Stack.Screen name="AddressManagement" component={AddressManagement} />
-          <Stack.Screen name="TopUp" component={TopUp} />
-          <Stack.Screen name="PaymentMethod" component={PaymentMethod} />
-          <Stack.Screen name="PersonalDetails" component={PersonalDetails} />
-          <Stack.Screen name="FamilyAndFriends" component={FamilyAndFriends} />
-          <Stack.Screen name="SecuritySettings" component={SecuritySettings} />
-          <Stack.Screen name="Support" component={Support} />
-          <Stack.Screen name="About" component={About} />
-          <Stack.Screen name="Terms" component={Terms} />
-          <Stack.Screen name="HealthMetricDetail" component={HealthMetricDetail} />
-          <Stack.Screen name="MedicationManagement" component={MedicationManagement} />
-          <Stack.Screen name="AddMedication" component={AddMedication} />
-          <Stack.Screen name="DosageSchedule" component={DosageSchedule} />
-          <Stack.Screen name="ConditionManagement" component={ConditionManagement} />
-          <Stack.Screen name="AddCondition" component={AddCondition} />
-          <Stack.Screen name="ConditionDrugs" component={ConditionDrugs} />
-          <Stack.Screen name="DrugProfile" component={DrugProfile} />
-          <Stack.Screen name="WellnessCheck" component={WellnessCheck} />
-          <Stack.Screen name="BMICalculator" component={BMICalculator} />
-          <Stack.Screen name="PharmacistConsult" component={PharmacistConsult} />
-          <Stack.Screen name="DoctorConsult" component={DoctorConsult} />
-          <Stack.Screen name="OrderDrugs" component={OrderDrugs} />
-          <Stack.Screen name="ConsultationHome" component={ConsultationHome} />
-          <Stack.Screen name="HealthcareProfessionals" component={HealthcareProfessionals} />
-          <Stack.Screen name="ProfessionalProfile" component={ProfessionalProfile} />
-          <Stack.Screen name="CalorieCalculator" component={CalorieCalculator} />
-          <Stack.Screen name="OvulationCalculator" component={OvulationCalculator} />
-          <Stack.Screen name="BookAppointment" component={BookAppointment} />
-          <Stack.Screen name="AppointmentConfirmation" component={AppointmentConfirmation} />
-          <Stack.Screen name="PharmacyProfile" component={PharmacyProfile} />
-          <Stack.Screen name="OrderDetails" component={OrderDetails} />
-          <Stack.Screen name="AmbulanceService" component={AmbulanceService} />
-          <Stack.Screen name="MedicationRefill" component={MedicationRefill} />
-          <Stack.Screen name="PharmaBundles" component={PharmaBundles} />
-          <Stack.Screen name="InstitutionPackages" component={InstitutionPackages} />
-          <Stack.Screen name="PackageDetails" component={PackageDetails} />
-          <Stack.Screen name="UserAppointments" component={UserAppointments} />
-          <Stack.Screen name="PatientAppointmentDetails" component={PatientAppointmentDetails} />
-          <Stack.Screen name="DoctorProfile" component={DoctorProfile} />
-          <Stack.Screen name="PaystackPayment" component={PaystackPayment} options={{ headerShown: false }} />
+          <Stack.Screen name='MainLayout' component={MainLayout} />
+          <Stack.Screen name='Categories' component={Categories} />
+          <Stack.Screen name='CategoryDetails' component={CategoryDetails} />
+          <Stack.Screen name='PharmacyDetail' component={PharmacyDetail} />
+          <Stack.Screen name='Cart' component={Cart} />
+          <Stack.Screen
+            name='AddressManagement'
+            component={AddressManagement}
+          />
+          <Stack.Screen name='TopUp' component={TopUp} />
+          <Stack.Screen name='PaymentMethod' component={PaymentMethod} />
+          <Stack.Screen name='PersonalDetails' component={PersonalDetails} />
+          <Stack.Screen name='FamilyAndFriends' component={FamilyAndFriends} />
+          <Stack.Screen name='SecuritySettings' component={SecuritySettings} />
+          <Stack.Screen name='Support' component={Support} />
+          <Stack.Screen name='About' component={About} />
+          <Stack.Screen name='Terms' component={Terms} />
+          <Stack.Screen
+            name='HealthMetricDetail'
+            component={HealthMetricDetail}
+          />
+          <Stack.Screen
+            name='MedicationManagement'
+            component={MedicationManagement}
+          />
+          <Stack.Screen name='AddMedication' component={AddMedication} />
+          <Stack.Screen name='DosageSchedule' component={DosageSchedule} />
+          <Stack.Screen
+            name='ConditionManagement'
+            component={ConditionManagement}
+          />
+          <Stack.Screen name='AddCondition' component={AddCondition} />
+          <Stack.Screen name='ConditionDrugs' component={ConditionDrugs} />
+          <Stack.Screen name='DrugProfile' component={DrugProfile} />
+          <Stack.Screen name='WellnessCheck' component={WellnessCheck} />
+          <Stack.Screen name='BMICalculator' component={BMICalculator} />
+          <Stack.Screen
+            name='PharmacistConsult'
+            component={PharmacistConsult}
+          />
+          <Stack.Screen name='DoctorConsult' component={DoctorConsult} />
+          <Stack.Screen name='OrderDrugs' component={OrderDrugs} />
+          <Stack.Screen name='ConsultationHome' component={ConsultationHome} />
+          <Stack.Screen
+            name='HealthcareProfessionals'
+            component={HealthcareProfessionals}
+          />
+          <Stack.Screen
+            name='ProfessionalProfile'
+            component={ProfessionalProfile}
+          />
+          <Stack.Screen
+            name='CalorieCalculator'
+            component={CalorieCalculator}
+          />
+          <Stack.Screen
+            name='OvulationCalculator'
+            component={OvulationCalculator}
+          />
+          <Stack.Screen name='BookAppointment' component={BookAppointment} />
+          <Stack.Screen
+            name='AppointmentConfirmation'
+            component={AppointmentConfirmation}
+          />
+          <Stack.Screen name='PharmacyProfile' component={PharmacyProfile} />
+          <Stack.Screen name='OrderDetails' component={OrderDetails} />
+          <Stack.Screen name='AmbulanceService' component={AmbulanceService} />
+          <Stack.Screen name='MedicationRefill' component={MedicationRefill} />
+          <Stack.Screen name='PharmaBundles' component={PharmaBundles} />
+          <Stack.Screen
+            name='InstitutionPackages'
+            component={InstitutionPackages}
+          />
+          <Stack.Screen name='PackageDetails' component={PackageDetails} />
+          <Stack.Screen name='UserAppointments' component={UserAppointments} />
+          <Stack.Screen
+            name='PatientAppointmentDetails'
+            component={PatientAppointmentDetails}
+          />
+          <Stack.Screen name='DoctorProfile' component={DoctorProfile} />
+          <Stack.Screen
+            name='PaystackPayment'
+            component={PaystackPayment}
+            options={{ headerShown: false }}
+          />
           {/* Integration Example Screen */}
-          <Stack.Screen 
-            name="UserManagementExample" 
-            component={UserManagementExample} 
-            options={{ 
-              headerShown: true, 
+          <Stack.Screen
+            name='UserManagementExample'
+            component={UserManagementExample}
+            options={{
+              headerShown: true,
               title: 'Integration Example',
               headerStyle: { backgroundColor: '#007bff' },
               headerTintColor: '#fff',
-              headerTitleStyle: { fontWeight: 'bold' }
-            }} 
+              headerTitleStyle: { fontWeight: 'bold' },
+            }}
           />
           {/* <Stack.Screen name="FlutterwavePayment" component={FlutterwavePayment} options={{ headerShown: false }} /> */}
         </Stack.Navigator>
@@ -195,13 +237,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-      <AuthProvider>
-        <ApiProvider>
-          <CartProvider>
-            <AppNavigator />
-          </CartProvider>
-        </ApiProvider>
-      </AuthProvider>
+        <AuthProvider>
+          <ApiProvider>
+            <CartProvider>
+              <AppNavigator />
+            </CartProvider>
+          </ApiProvider>
+        </AuthProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
