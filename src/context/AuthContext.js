@@ -1,267 +1,214 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { userData } from '../data/dummyUser';
-import { AppointmentService } from '../lib/api';
+import React, {
+  createContext,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useContext,
+} from 'react';
+import { AuthUtils } from '../lib/auth-utils';
+import { authApi, profileAPI } from '../lib/api';
 
-const AuthContext = createContext({});
-
-const AUTH_STORAGE_KEY = '@auth_token';
-const USER_STORAGE_KEY = '@user_data';
+export const AuthContext = createContext({
+  user: null,
+  isAuthenticated: false,
+  isBootstrapping: true,
+  isLoading: false,
+  error: '',
+  login: async (_email, _password) => {},
+  register: async (_payload) => {},
+  logout: async () => {},
+  refreshProfile: async () => {},
+  forgotPassword: async (_email) => {},
+  resetPassword: async (_token, _password) => {},
+});
 
 export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [authToken, setAuthToken] = useState(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    checkAuthStatus();
+  const bootstrap = useCallback(async () => {
+    try {
+      const token = await AuthUtils.getAccessToken();
+      if (!token) {
+        setUser(null);
+        return;
+      }
+      const res = await profileAPI.me();
+      setUser(res?.data?.data ?? null);
+    } catch (_) {
+      await AuthUtils.clearTokens();
+      setUser(null);
+    } finally {
+      setIsBootstrapping(false);
+    }
   }, []);
 
-  // Initialize appointment service when user changes
   useEffect(() => {
-    if (user) {
-      initializeAppointmentService();
-    }
-  }, [user]);
+    bootstrap();
+  }, [bootstrap]);
 
-  const initializeAppointmentService = async () => {
+  // inside AuthProvider
+
+  const login = useCallback(async (email, password) => {
+    setIsLoading(true);
+    setError('');
     try {
-      await AppointmentService.initialize(user, 'patient');
-      console.log(`📅 Appointment service initialized for patient:`, user.name);
-    } catch (error) {
-      console.error('Error initializing appointment service:', error);
-    }
-  };
+      const res = await authApi.login(email, password);
+      const data = res?.data?.data;
+      const tokens = data?.tokens;
+      const userPayload = data?.user;
 
-  const checkAuthStatus = async () => {
-    try {
-      const [token, storedUser] = await Promise.all([
-        AsyncStorage.getItem(AUTH_STORAGE_KEY),
-        AsyncStorage.getItem(USER_STORAGE_KEY),
-      ]);
-
-      if (token && storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        
-        setAuthToken(token);
-        setUser(parsedUser);
-        setIsLoggedIn(true);
-      } else {
-        // No auto-login - user should start at roles selection
-        setIsLoggedIn(false);
+      if (tokens?.accessToken && tokens?.refreshToken) {
+        await AuthUtils.storeTokens({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn:
+            typeof tokens.accessTokenExpiresIn === 'number'
+              ? tokens.accessTokenExpiresIn
+              : 0,
+        });
+        setUser(userPayload ?? null);
+        return userPayload;
       }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      setIsLoggedIn(false);
+      throw new Error(res?.data?.message || 'Invalid login response');
+    } catch (e) {
+      setError(
+        e?.response?.data?.message ||
+          e?.message ||
+          'Login failed. Please try again.'
+      );
+      throw e;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  const register = useCallback(async (payload) => {
+    setIsLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check credentials - only allow patient login
-      let loginUser = null;
-      
-      if (email === userData.patient.email) {
-        loginUser = userData.patient;
-      } else {
-        throw new Error('Invalid credentials');
+      const res = await authApi.signup(payload);
+      const data = res?.data?.data;
+      const tokens = data?.tokens;
+      const userPayload = data?.user;
+
+      if (tokens?.accessToken && tokens?.refreshToken) {
+        await AuthUtils.storeTokens({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn:
+            typeof tokens.accessTokenExpiresIn === 'number'
+              ? tokens.accessTokenExpiresIn
+              : 0,
+        });
+        setUser(userPayload ?? null);
+        return userPayload;
       }
-
-      const token = `demo_token_${Date.now()}`;
-      
-      // Store auth data
-      await Promise.all([
-        AsyncStorage.setItem(AUTH_STORAGE_KEY, token),
-        AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(loginUser)),
-      ]);
-
-      setAuthToken(token);
-      setUser(loginUser);
-      setIsLoggedIn(true);
-
-      return { success: true, user: loginUser };
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+      throw new Error(res?.data?.message || 'Invalid signup response');
+    } catch (e) {
+      setError(
+        e?.response?.data?.message ||
+          e?.message ||
+          'Signup failed. Please try again.'
+      );
+      throw e;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loginAsPatient = async () => {
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
     try {
-      const patientUser = userData.patient;
-      const token = `demo_token_patient_${Date.now()}`;
-      
-      await Promise.all([
-        AsyncStorage.setItem(AUTH_STORAGE_KEY, token),
-        AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(patientUser)),
-      ]);
-
-      setAuthToken(token);
-      setUser(patientUser);
-      setIsLoggedIn(true);
-
-      console.log('🔐 Auto-logged in as Sageikot (Patient)');
-      return { success: true, user: patientUser };
-    } catch (error) {
-      console.error('Error logging in as patient:', error);
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      setLoading(true);
-      
-      await Promise.all([
-        AsyncStorage.removeItem(AUTH_STORAGE_KEY),
-        AsyncStorage.removeItem(USER_STORAGE_KEY),
-      ]);
-
-      setAuthToken(null);
+      try {
+        await authApi.logout();
+      } catch (_) {}
+      await AuthUtils.clearTokens();
       setUser(null);
-      setIsLoggedIn(false);
-
-      console.log('🔐 User logged out');
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+    } catch (e) {
+      setError(e?.message || 'Logout failed.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Force complete logout - clears everything and returns to auth
-  const forceLogout = async () => {
+  const refreshProfile = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      
-      // Clear all possible auth storage keys
-      await Promise.all([
-        AsyncStorage.removeItem(AUTH_STORAGE_KEY),
-        AsyncStorage.removeItem(USER_STORAGE_KEY),
-        AsyncStorage.removeItem('@current_role'), // Doctor role key
-        AsyncStorage.removeItem('@doctor_data'), // Doctor data key
-        AsyncStorage.removeItem('@user_data'), // User data key
-        AsyncStorage.removeItem('@appointments'), // Appointments data
-        AsyncStorage.removeItem('@appointment_notifications'), // Notifications
-        AsyncStorage.removeItem('scheduledNotifications'), // Scheduled notifications
-        AsyncStorage.removeItem('sentNotifications'), // Sent notifications
-        AsyncStorage.removeItem('notificationHistory'), // Notification history
-      ]);
-
-      // Reset all auth state
-      setAuthToken(null);
-      setUser(null);
-      setIsLoggedIn(false);
-
-      console.log('🔐 Complete logout - returning to auth flow');
-    } catch (error) {
-      console.error('Force logout error:', error);
+      const res = await profileAPI.me();
+      const next = res?.data?.data ?? null;
+      setUser(next);
+      return next;
+    } catch (e) {
+      setError(e?.message || 'Failed to refresh profile.');
+      throw e;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const register = async (userData) => {
+  const forgotPassword = useCallback(async (email) => {
+    setIsLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo, automatically log in the new user as a patient
-      const newUser = {
-        ...userData,
-        _id: `user_${Date.now()}`,
-        id: `user_${Date.now()}`,
-        roles: ['PATIENT'],
-        userType: 'patient',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      const token = `demo_token_${Date.now()}`;
-      
-      await Promise.all([
-        AsyncStorage.setItem(AUTH_STORAGE_KEY, token),
-        AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser)),
-      ]);
-
-      setAuthToken(token);
-      setUser(newUser);
-      setIsLoggedIn(true);
-
-      return { success: true, user: newUser };
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+      await authApi.forgotPassword(email);
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Failed to send reset email.');
+      throw e;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const updateProfile = async (updates) => {
+  const resetPassword = useCallback(async (token, password) => {
+    setIsLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      
-      const updatedUser = {
-        ...user,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-      setUser(updatedUser);
-
-      return { success: true, user: updatedUser };
-    } catch (error) {
-      console.error('Profile update error:', error);
-      throw error;
+      await authApi.resetPassword(token, password);
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Failed to reset password.');
+      throw e;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const contextValue = {
-    // Auth state
-    isLoggedIn,
-    user,
-    loading,
-    authToken,
-    
-    // Auth methods
-    login,
-    loginAsPatient,
-    logout,
-    forceLogout,
-    register,
-    updateProfile,
-    
-    // User data
-    userData,
-  };
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      isBootstrapping,
+      isLoading,
+      error,
+      login,
+      register,
+      logout,
+      refreshProfile,
+      forgotPassword,
+      resetPassword,
+    }),
+    [
+      user,
+      isBootstrapping,
+      isLoading,
+      error,
+      login,
+      register,
+      logout,
+      refreshProfile,
+      forgotPassword,
+      resetPassword,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}; 
+export const useAuth = () => useContext(AuthContext);

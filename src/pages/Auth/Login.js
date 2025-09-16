@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+import { AuthContext } from '../../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { isDevelopment } from '../../config/env';
 import logo from '../../../assets/logo.png';
@@ -22,16 +22,15 @@ const Login = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  
-  const { login, loading, error } = useAuth();
 
-  // Validate email format
-  const validateEmail = (email) => {
+  const { login, isLoading, error } = useContext(AuthContext);
+
+  const validateEmail = (value) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('Email is  d');
+    if (!value) {
+      setEmailError('Email is required');
       return false;
-    } else if (!emailRegex.test(email)) {
+    } else if (!emailRegex.test(value)) {
       setEmailError('Invalid email format');
       return false;
     }
@@ -39,12 +38,11 @@ const Login = ({ navigation }) => {
     return true;
   };
 
-  // Validate password
-  const validatePassword = (password) => {
-    if (!password) {
-      setPasswordError('Password is  d');
+  const validatePassword = (value) => {
+    if (!value) {
+      setPasswordError('Password is required');
       return false;
-    } else if (password.length < 6) {
+    } else if (value.length < 6) {
       setPasswordError('Password must be at least 6 characters');
       return false;
     }
@@ -52,23 +50,19 @@ const Login = ({ navigation }) => {
     return true;
   };
 
-  // Handle login
   const handleLogin = async () => {
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
 
     if (isEmailValid && isPasswordValid) {
       try {
-        await login(email, password);
-        // No need to navigate - the auth context will handle this
-      } catch (err) {
-        // Error is already handled by the auth context
-        console.log('Login failed', err);
+        await login(email.trim(), password);
+      } catch (_) {
+        // error already handled by context
       }
     }
   };
 
-  // Fill test credentials (for development only)
   const fillTestCredentials = () => {
     setEmail('test@example.com');
     setPassword('password');
@@ -81,31 +75,29 @@ const Login = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoContainer}>
-          <Image
-            source={logo}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Image source={logo} style={styles.logo} resizeMode='contain' />
         </View>
 
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
+              placeholder='Enter your email'
+              keyboardType='email-address'
+              autoCapitalize='none'
               value={email}
               onChangeText={setEmail}
               onBlur={() => validateEmail(email)}
             />
-            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+            {emailError ? (
+              <Text style={styles.errorText}>{emailError}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
@@ -113,7 +105,7 @@ const Login = ({ navigation }) => {
             <View style={styles.passwordInputContainer}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Enter your password"
+                placeholder='Enter your password'
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
@@ -126,11 +118,13 @@ const Login = ({ navigation }) => {
                 <MaterialIcons
                   name={showPassword ? 'visibility' : 'visibility-off'}
                   size={24}
-                  color="#999"
+                  color='#999'
                 />
               </TouchableOpacity>
             </View>
-            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+            {passwordError ? (
+              <Text style={styles.errorText}>{passwordError}</Text>
+            ) : null}
           </View>
 
           <TouchableOpacity
@@ -143,10 +137,10 @@ const Login = ({ navigation }) => {
           <TouchableOpacity
             style={styles.loginButton}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={isLoading}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
+            {isLoading ? (
+              <ActivityIndicator color='#fff' size='small' />
             ) : (
               <Text style={styles.loginButtonText}>Login</Text>
             )}
@@ -157,7 +151,9 @@ const Login = ({ navigation }) => {
               style={styles.testCredentialsButton}
               onPress={fillTestCredentials}
             >
-              <Text style={styles.testCredentialsText}>Use Test Credentials</Text>
+              <Text style={styles.testCredentialsText}>
+                Use Test Credentials
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -167,7 +163,7 @@ const Login = ({ navigation }) => {
               <Text style={styles.signupButtonText}>Sign Up</Text>
             </TouchableOpacity>
           </View>
-          
+
           {isDevelopment() && (
             <View style={styles.testCredentialsInfo}>
               <Text style={styles.testCredentialsInfoText}>
@@ -312,4 +308,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Login; 
+export default Login;

@@ -1,102 +1,110 @@
-import { telnyxConfig, ENV } from './env';
+// src/config/TelnyxConfig.js
+import Constants from 'expo-constants';
+import { isDevelopment } from './env';
 
-// Note: These environment variables are now loaded from env.js
-// For production builds, you'll configure real Telnyx credentials in app.json
+const extra = (Constants.expoConfig || Constants.manifest)?.extra || {};
+// Expect TELNYX to be provided via app.config.js extra (non-secret or dev-only)
+const telnyxExtra = extra.TELNYX || {};
+
+const SIM_DEFAULTS = {
+  sipUser: 'dev_user',
+  sipPassword: 'dev_password',
+  apiKey: 'dev_api_key',
+  debug: true,
+};
+
+const resolved = {
+  sipUser: telnyxExtra.sipUser || SIM_DEFAULTS.sipUser,
+  sipPassword: telnyxExtra.sipPassword || SIM_DEFAULTS.sipPassword,
+  apiKey: telnyxExtra.apiKey || SIM_DEFAULTS.apiKey,
+  debug:
+    typeof telnyxExtra.debug === 'boolean'
+      ? telnyxExtra.debug
+      : SIM_DEFAULTS.debug,
+};
 
 export const TelnyxConfig = {
-  // SIP Credentials (from env.js)
-  sipUser: telnyxConfig.sipUser,
-  sipPassword: telnyxConfig.sipPassword,
-  apiKey: telnyxConfig.apiKey,
-  
-  // Debug mode for call quality monitoring
-  debug: telnyxConfig.debug,
-  
-  // Development mode flag
-  isDevelopment: ENV.IS_DEVELOPMENT || telnyxConfig.sipUser === 'dev_user',
-  
-  // Default configuration
+  sipUser: resolved.sipUser,
+  sipPassword: resolved.sipPassword,
+  apiKey: resolved.apiKey,
+
+  debug: resolved.debug,
+
+  // Use app dev mode (or fall back to simulation if using dev defaults)
+  isDevelopment: isDevelopment() || resolved.sipUser === SIM_DEFAULTS.sipUser,
+
   defaultCallerName: 'Professional',
-  
-  // Audio/Video settings
+
   audioSettings: {
     echoCancellation: true,
     noiseSuppression: true,
-    autoGainControl: true
+    autoGainControl: true,
   },
-  
+
   videoSettings: {
     width: 1280,
     height: 720,
     frameRate: 30,
-    facingMode: 'user' // 'user' for front camera, 'environment' for back camera
+    facingMode: 'user',
   },
-  
-  // Call settings
+
   callSettings: {
-    maxCallDuration: 3600, // 1 hour in seconds
+    maxCallDuration: 3600,
     enableCallRecording: false,
-    enableCallQualityMonitoring: true
+    enableCallQualityMonitoring: true,
   },
-  
-  // Push notification settings
+
   pushSettings: {
     enablePushNotifications: true,
-    soundFile: 'default', // or path to custom sound file
-    vibrationPattern: [1000, 1000, 1000]
+    soundFile: 'default',
+    vibrationPattern: [1000, 1000, 1000],
   },
-  
-  // Development settings
+
   developmentSettings: {
     simulateIncomingCalls: true,
-    callAnswerDelay: 3000, // milliseconds
-    enableCallQualitySimulation: true
-  }
+    callAnswerDelay: 3000,
+    enableCallQualitySimulation: true,
+  },
 };
 
 export const validateTelnyxConfig = () => {
-  // In development mode, validation is more lenient
   if (TelnyxConfig.isDevelopment) {
-    console.log('TelnyxConfig: Running in development/simulation mode');
+    console.log('TelnyxConfig: Development/simulation mode');
     return true;
   }
-  
   const errors = [];
-  
-  if (!TelnyxConfig.sipUser || TelnyxConfig.sipUser === 'dev_user') {
+  if (!TelnyxConfig.sipUser || TelnyxConfig.sipUser === SIM_DEFAULTS.sipUser) {
     errors.push('TELNYX_SIP_USER is required for production');
   }
-  
-  if (!TelnyxConfig.sipPassword || TelnyxConfig.sipPassword === 'dev_password') {
+  if (
+    !TelnyxConfig.sipPassword ||
+    TelnyxConfig.sipPassword === SIM_DEFAULTS.sipPassword
+  ) {
     errors.push('TELNYX_SIP_PASSWORD is required for production');
   }
-  
-  if (!TelnyxConfig.apiKey || TelnyxConfig.apiKey === 'dev_api_key') {
+  if (!TelnyxConfig.apiKey || TelnyxConfig.apiKey === SIM_DEFAULTS.apiKey) {
     errors.push('TELNYX_API_KEY is required for production');
   }
-  
-  if (errors.length > 0) {
+  if (errors.length) {
     console.warn(`Telnyx configuration warnings: ${errors.join(', ')}`);
     console.log('Continuing in development mode...');
     return true;
   }
-  
   return true;
 };
 
 export const getTelnyxInitConfig = (pushToken = null) => {
   validateTelnyxConfig();
-  
   return {
     sipUser: TelnyxConfig.sipUser,
     sipPassword: TelnyxConfig.sipPassword,
-    pushToken: pushToken,
+    pushToken,
     debug: TelnyxConfig.debug,
     callerName: TelnyxConfig.defaultCallerName,
     audioSettings: TelnyxConfig.audioSettings,
     videoSettings: TelnyxConfig.videoSettings,
-    isSimulation: TelnyxConfig.isDevelopment
+    isSimulation: TelnyxConfig.isDevelopment,
   };
 };
 
-export default TelnyxConfig; 
+export default TelnyxConfig;
