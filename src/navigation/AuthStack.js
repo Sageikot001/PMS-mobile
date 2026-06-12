@@ -8,6 +8,7 @@ import ProfessionalOnboarding from '../screens/ProfessionalOnboarding';
 import InstitutionOnboarding from '../screens/InstitutionOnboarding';
 import ProfessionalHome from '../screens/ProfessionalHome';
 import DoctorMainStack from './DoctorMainStack';
+import PharmacyMainStack from './PharmacyMainStack';
 import { ActivityIndicator } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
@@ -36,6 +37,7 @@ const AuthStack = () => {
       />
       <Stack.Screen name='ProfessionalHome' component={ProfessionalHome} />
       <Stack.Screen name='DoctorApp' component={DoctorMainStack} />
+      <Stack.Screen name='PharmacyApp' component={PharmacyMainStack} />
       <Stack.Screen name='Login' component={Login} />
       <Stack.Screen name='Register' component={Register} />
       <Stack.Screen name='ForgotPassword' component={ForgotPassword} />

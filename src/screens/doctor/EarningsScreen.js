@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,31 +7,60 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { analyticsAPI } from '../../lib/api';
 
 const { width } = Dimensions.get('window');
+
+const PERIOD_PARAM = {
+  Weekly: 'weekly',
+  Monthly: 'monthly',
+  Yearly: 'yearly',
+};
 
 const EarningsScreen = () => {
   const navigation = useNavigation();
   const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
-
-  // Mock data
-  const earningsData = {
-    total: 6450,
-    growth: 15.8,
-    transactions: [
-      { id: 1, patient: 'John Smith', type: 'Follow-up', amount: 150, status: 'Paid', date: '2024-01-15' },
-      { id: 2, patient: 'Jane Doe', type: 'Consultation', amount: 85, status: 'Paid', date: '2024-01-14' },
-      { id: 3, patient: 'Michael Brown', type: 'Check-up', amount: 100, status: 'Pending', date: '2024-01-13' },
-      { id: 4, patient: 'Sarah Wilson', type: 'Consultation', amount: 60, status: 'Paid', date: '2024-01-12' },
-      { id: 5, patient: 'David Johnson', type: 'Video Call', amount: 75, status: 'Paid', date: '2024-01-11' },
-      { id: 6, patient: 'Lisa Chen', type: 'In-Person', amount: 120, status: 'Pending', date: '2024-01-10' },
-    ]
-  };
+  const [loading, setLoading] = useState(false);
+  const [earningsData, setEarningsData] = useState({
+    total: 0,
+    growth: 0,
+    transactions: [],
+  });
 
   const periods = ['Weekly', 'Monthly', 'Yearly'];
+
+  const loadEarnings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await analyticsAPI.revenue({ period: PERIOD_PARAM[selectedPeriod] });
+      const data = res?.data?.data ?? res?.data ?? {};
+
+      // Normalise the API response — backend may return different shapes
+      setEarningsData({
+        total: data.totalRevenue ?? data.total ?? 0,
+        growth: data.growthPercent ?? data.growth ?? 0,
+        transactions: (data.transactions ?? data.recentPayments ?? []).map((t, idx) => ({
+          id: t._id ?? t.id ?? idx,
+          patient: t.patientName ?? t.patient?.name ?? t.patient ?? 'Patient',
+          type: t.appointmentType ?? t.type ?? 'Consultation',
+          amount: t.amount ?? 0,
+          status: t.status ?? 'Paid',
+          date: t.date ?? t.createdAt ?? '',
+        })),
+      });
+    } catch (error) {
+      console.error('Error loading earnings:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedPeriod]);
+
+  useFocusEffect(useCallback(() => { loadEarnings(); }, [loadEarnings]));
+  useEffect(() => { loadEarnings(); }, [selectedPeriod]);
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -49,12 +78,18 @@ const EarningsScreen = () => {
     <View style={styles.earningsCard}>
       <View style={styles.earningsHeader}>
         <Text style={styles.earningsLabel}>Total Earnings</Text>
-        <View style={styles.growthContainer}>
-          <Ionicons name="trending-up" size={16} color="#28A745" />
-          <Text style={styles.growthText}>↑ {earningsData.growth}%</Text>
-        </View>
+        {earningsData.growth !== 0 && (
+          <View style={styles.growthContainer}>
+            <Ionicons name="trending-up" size={16} color="#28A745" />
+            <Text style={styles.growthText}>↑ {earningsData.growth}%</Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.earningsAmount}>${earningsData.total.toLocaleString()}</Text>
+      {loading ? (
+        <ActivityIndicator color="#fff" size="large" />
+      ) : (
+        <Text style={styles.earningsAmount}>₦{earningsData.total.toLocaleString()}</Text>
+      )}
     </View>
   );
 
@@ -126,7 +161,15 @@ const EarningsScreen = () => {
   const renderTransactionsList = () => (
     <View style={styles.transactionsSection}>
       <Text style={styles.sectionTitle}>Recent Transactions</Text>
-      {earningsData.transactions.map(renderTransaction)}
+      {loading ? (
+        <ActivityIndicator color="#4A90E2" style={{ marginVertical: 20 }} />
+      ) : earningsData.transactions.length > 0 ? (
+        earningsData.transactions.map(renderTransaction)
+      ) : (
+        <Text style={{ color: '#7F8C8D', textAlign: 'center', marginVertical: 20 }}>
+          No transactions for this period.
+        </Text>
+      )}
     </View>
   );
 

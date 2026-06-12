@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { useState } from 'react';
 import { StyleSheet, View, SafeAreaView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +18,8 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Import Auth Stack
 import AuthStack from './src/navigation/AuthStack';
+import DoctorMainStack from './src/navigation/DoctorMainStack';
+import PharmacyMainStack from './src/navigation/PharmacyMainStack';
 
 // Import pages
 import Home from './src/pages/Home/Home';
@@ -115,7 +118,23 @@ const MainLayout = ({ navigation }) => {
 
 // Main navigation component
 const AppNavigator = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  if (isAuthenticated && user?.role === 'DOCTOR') {
+    return (
+      <NavigationContainer>
+        <DoctorMainStack />
+      </NavigationContainer>
+    );
+  }
+
+  if (isAuthenticated && user?.role === 'PHARMACY') {
+    return (
+      <NavigationContainer>
+        <PharmacyMainStack />
+      </NavigationContainer>
+    );
+  }
 
   return (
     <NavigationContainer>

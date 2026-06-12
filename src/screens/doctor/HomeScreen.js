@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; // For avatar placeholder
-import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
-import { notificationService, AppointmentService } from '../../lib/api';
-import { userData } from '../../data/dummyUser';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { appointmentsAPI, notificationsAPI } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 // Mock data for recent patients - patients who recently had appointments
 const mockRecentPatients = [
@@ -22,56 +22,38 @@ const mockRecentPatients = [
 ];
 
 const DoctorHomeScreen = () => {
-  const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useAuth();
   const [todaysAppointments, setTodaysAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Mock doctor profile data (in a real app, this would come from user context/API)
+
+  // Derive display name from auth user; doctor profile object may be nested
   const doctorProfile = {
-    id: 'doc_001',
-    firstName: 'John',
-    lastName: 'Smith',
-    specialization: 'Internal Medicine',
-    email: 'dr.johnsmith@hospital.com',
-    phone: '+1 (555) 123-4567',
-    licenseNumber: 'MD123456',
-    experience: '15 years',
-    avatar: null, // URL to profile image
-    hospital: 'City General Hospital',
-    department: 'Internal Medicine',
-    rating: 4.8,
-    totalPatients: 1250,
-    completedAppointments: 3420
+    firstName: user?.name?.split(' ')[0] ?? user?.firstName ?? 'Doctor',
+    lastName: user?.name?.split(' ').slice(1).join(' ') ?? user?.lastName ?? '',
+    specialization: user?.doctor?.specialization ?? user?.specialization ?? '',
+    avatar: user?.profilePicture ?? user?.avatar ?? null,
   };
 
-  // Load today's appointments from AppointmentService
+  // Load today's appointments from the API
   const loadTodaysAppointments = async () => {
     try {
       setLoading(true);
-      
-      // Initialize AppointmentService with doctor data
-      const doctorUser = userData.doctor;
-      await AppointmentService.initialize(doctorUser, 'doctor');
-      
-      // Force refresh data to ensure we get the latest appointments
-      await AppointmentService.refreshData();
-      
-      // Get today's appointments
+
       const today = new Date().toISOString().split('T')[0];
-      const allAppointments = await AppointmentService.getMyAppointments();
-      const todaysAppts = allAppointments.filter(apt => {
-        // Use utility method for consistent date comparison
-        return AppointmentService.isSameDay(apt.appointmentDate, today);
+      const res = await appointmentsAPI.list({
+        date: today,
+        role: 'doctor',
+        limit: 50,
       });
-      
+
+      const allAppointments = res?.data?.data?.appointments ?? res?.data?.data ?? [];
+      const todaysAppts = allAppointments.filter((apt) => {
+        if (!apt.appointmentDate) return false;
+        return new Date(apt.appointmentDate).toISOString().split('T')[0] === today;
+      });
+
       setTodaysAppointments(todaysAppts);
-      console.log(`📅 Loaded ${todaysAppts.length} appointments for today`);
-      
-      // Schedule notifications for appointments
-      if (todaysAppts.length > 0) {
-        scheduleAppointmentNotifications(todaysAppts);
-      }
     } catch (error) {
       console.error('Error loading today\'s appointments:', error);
     } finally {
@@ -79,77 +61,27 @@ const DoctorHomeScreen = () => {
     }
   };
 
-  // Schedule notifications for appointments
+  // Create in-app notifications for today's upcoming appointments
   const scheduleAppointmentNotifications = async (appointments) => {
     try {
-      // Initialize notification service
-      await notificationService.initialize();
-      
-      console.log('📋 Original appointments data:', appointments.map(apt => ({
-        id: apt.id,
-        appointmentDate: apt.appointmentDate,
-        appointmentTime: apt.appointmentTime,
-        patientName: apt.patientName
-      })));
-      
-      // Add date field to appointments for notification service compatibility
-      const appointmentsWithDate = appointments.map(apt => {
-        // Convert appointmentDate (ISO string) to date (YYYY-MM-DD format)
-        const appointmentDate = new Date(apt.appointmentDate);
-        const dateString = appointmentDate.toISOString().split('T')[0];
-        
-        const appointmentWithDate = {
-          ...apt,
-          date: dateString
-        };
-        
-        console.log(`📅 Converted appointment ${apt.id}:`, {
-          originalDate: apt.appointmentDate,
-          convertedDate: dateString,
-          appointmentTime: apt.appointmentTime,
-          patientName: apt.patientName
-        });
-        
-        return appointmentWithDate;
-      });
-      
-      // Test data structure for each appointment
-      appointmentsWithDate.forEach(appointment => {
-        const isValid = notificationService.testAppointmentDataStructure(appointment);
-        if (!isValid) {
-          console.error('Invalid appointment data structure:', appointment);
+      for (const apt of appointments) {
+        if (apt.status === 'scheduled' || apt.status === 'confirmed') {
+          await notificationsAPI.create({
+            title: 'Upcoming Appointment',
+            message: `You have an appointment${apt.reason ? ` for ${apt.reason}` : ''} today.`,
+            type: 'appointment_reminder',
+            referenceId: apt._id ?? apt.id,
+          }).catch(() => {}); // non-critical — ignore individual failures
         }
-      });
-      
-      console.log('Scheduling reminders for today\'s appointments');
-      notificationService.scheduleAllTodaysReminders(appointmentsWithDate);
-      
-      // Clean up old notifications
-      notificationService.cleanupExpiredNotifications();
+      }
     } catch (error) {
-      console.error('Error scheduling notifications:', error);
+      console.error('Error creating appointment notifications:', error);
     }
   };
 
-  // Initialize services and load appointments when component mounts
+  // Load appointments on mount
   useEffect(() => {
     loadTodaysAppointments();
-    
-    // Add listener for appointment changes to enable real-time updates
-    const appointmentListener = (event, data) => {
-      console.log('📅 Appointment event received:', event, data);
-      if (event === 'appointment_created' || event === 'appointment_updated' || event === 'appointment_cancelled') {
-        // Refresh appointments when any appointment changes
-        loadTodaysAppointments();
-      }
-    };
-    
-    AppointmentService.addListener(appointmentListener);
-    
-    // Cleanup listener on unmount
-    return () => {
-      AppointmentService.removeListener(appointmentListener);
-    };
   }, []);
 
   // Re-load appointments when screen comes into focus
@@ -164,29 +96,41 @@ const DoctorHomeScreen = () => {
     navigation.navigate('Profile', { doctorProfile });
   };
 
-  const renderAppointmentCard = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.appointmentCard}
-      onPress={() => navigation.navigate('AppointmentDetails', { 
-        appointmentId: item.id,
-        appointment: item 
-      })}
-    >
-      <Text style={styles.appointmentTime}>{item.appointmentTime}</Text>
-      <View style={styles.appointmentDetails}>
-        <Text style={styles.appointmentPatientName}>{item.patientName}</Text>
-        <Text style={styles.appointmentType}>{item.type} • {item.duration || 30} min</Text>
-      </View>
-      <View style={styles.appointmentActions}>
-        <View style={[styles.statusIndicator, 
-          item.status === 'scheduled' || item.status === 'confirmed' ? styles.acceptedStatus : 
-          item.status === 'cancelled' ? styles.rejectedStatus : styles.pendingStatus
-        ]}>
-          <Text style={styles.statusText}>{item.status || 'Pending'}</Text>
+  const renderAppointmentCard = ({ item }) => {
+    // Backend stores appointmentDate as ISO string; extract HH:MM for display
+    const timeLabel = item.appointmentDate
+      ? new Date(item.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '--:--';
+    // Patient name may be populated as an object or a plain string
+    const patientName =
+      item.patient?.name ?? item.patient?.user?.name ?? item.patientName ?? 'Patient';
+    const reasonLabel = item.reason ?? item.type ?? 'Consultation';
+
+    return (
+      <TouchableOpacity
+        style={styles.appointmentCard}
+        onPress={() => navigation.navigate('AppointmentDetails', {
+          appointmentId: item._id ?? item.id,
+          appointment: item,
+        })}
+      >
+        <Text style={styles.appointmentTime}>{timeLabel}</Text>
+        <View style={styles.appointmentDetails}>
+          <Text style={styles.appointmentPatientName}>{patientName}</Text>
+          <Text style={styles.appointmentType}>{reasonLabel}</Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.appointmentActions}>
+          <View style={[
+            styles.statusIndicator,
+            item.status === 'scheduled' || item.status === 'confirmed' ? styles.acceptedStatus :
+            item.status === 'cancelled' ? styles.rejectedStatus : styles.pendingStatus,
+          ]}>
+            <Text style={styles.statusText}>{item.status || 'Pending'}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderRecentPatientCard = ({ item }) => (
     <TouchableOpacity 

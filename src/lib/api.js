@@ -46,26 +46,31 @@ function extractTokenFromRefreshResponse(responseData) {
   const rdData = isObject(rd?.data) ? rd.data : undefined;
   const tokensNode = isObject(rdData?.tokens) ? rdData.tokens : undefined;
 
-  //Standard success shape: {data: {tokens: {accessToken, refreshToken, accessExpiresAt}}}
+  // Standard success shape: {data: {tokens: {accessToken, refreshToken, accessTokenExpiresIn}}}
   if (tokensNode) {
     const at = getString(tokensNode, 'accessToken');
     const rt = getString(tokensNode, 'refreshToken');
-    const exp = getNumber(tokensNode, 'accessTokenExpiresIn');
-    if (at && rt && typeof exp === 'number') {
-      return { accessToken: at, refreshToken: rt, accessTokenExpiresIn: exp };
+    const exp =
+      getNumber(tokensNode, 'accessTokenExpiresIn') ??
+      getNumber(tokensNode, 'accessExpiresAt');
+    if (at && rt) {
+      return { accessToken: at, refreshToken: rt, accessTokenExpiresIn: exp ?? 0 };
     }
   }
 
-  //fallback: flattened response
+  // Fallback: flattened response
   const accessToken =
     getString(rd, 'accessToken') || getString(rdData, 'accessToken');
   const refreshToken =
     getString(rd, 'refreshToken') || getString(rdData, 'refreshToken');
   const accessTokenExpiresIn =
     getNumber(rd, 'accessTokenExpiresIn') ||
-    getNumber(rdData, 'accessTokenExpiresIn');
+    getNumber(rdData, 'accessTokenExpiresIn') ||
+    getNumber(rd, 'accessExpiresAt') ||
+    getNumber(rdData, 'accessExpiresAt') ||
+    0;
 
-  return { accessToken, refreshToken, accessExpiresAt: accessTokenExpiresIn };
+  return { accessToken, refreshToken, accessTokenExpiresIn };
 }
 
 // Request interceptor" Attaches Authorization header if token is available
@@ -305,6 +310,10 @@ export const patientApi = {
     api.get(`/api/v1/patients/${patientId}/family-members`, { params }),
   addFamilyMember: (patientId, payload) =>
     api.post(`/api/v1/patients/${patientId}/family-members`, payload),
+
+  // Payments / transaction history
+  getPayments: (patientId, params = {}) =>
+    api.get(`/api/v1/patients/${patientId}/payments`, { params }),
 };
 
 // Doctors API
@@ -530,7 +539,9 @@ export const prescriptionsAPI = {
   requestRefill: (prescriptionId, payload) =>
     api.post(`/api/v1/prescriptions/${prescriptionId}/refill`, payload),
 
-  // Pharmacy-scoped actions mounted under global prescriptions router
+  // Pharmacy-scoped verify/dispense — backend mounts these as:
+  // router.use('/:pharmacyId/prescriptions/:prescriptionId/verify', verifyRouter)
+  // under the /api/v1/prescriptions prefix, so the full path has "prescriptions" twice.
   verifyForPharmacy: (pharmacyId, prescriptionId, payload) =>
     api.post(
       `/api/v1/prescriptions/${pharmacyId}/prescriptions/${prescriptionId}/verify`,
@@ -839,5 +850,150 @@ export const staffAPI = {
   createRole: (payload) => api.post('/api/v1/staff/roles', payload),
   listRoles: () => api.get('/api/v1/staff/roles'),
 };
+// ─── Health metric type constants ────────────────────────────────────────────
+export const HEALTH_METRIC_TYPES = {
+  WEIGHT: 'weight',
+  HEIGHT: 'height',
+  BLOOD_PRESSURE: 'blood_pressure',
+  BMI: 'bmi',
+  BODY_FAT: 'body_fat',
+  BODY_WATER: 'body_water',
+  MUSCLE_MASS: 'muscle_mass',
+  HEART_RATE: 'heart_rate',
+};
+
+export const ACTIVITY_TYPES = {
+  HEALTH_METRIC: 'health_metric',
+  MEDICATION: 'medication',
+  CONDITION: 'condition',
+  WELLNESS_CALC: 'wellness_calc',
+  CONSULTATION: 'consultation',
+};
+
+// ─── HealthDataService ────────────────────────────────────────────────────────
+// Wraps patientApi vitals endpoints and transforms responses into the shape
+// MyHealth.js expects: { [metricType]: { current: { value, category? }, history: [] } }
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PATIENT_ID_KEY = 'patientId';
+
+async function getStoredPatientId() {
+  return AsyncStorage.getItem(PATIENT_ID_KEY);
+}
+
+export const HealthDataService = {
+  // Returns { weight: { current: {value}, history: [] }, heart_rate: {...}, ... }
+  getHealthMetrics: async () => {
+    const patientId = await getStoredPatientId();
+    if (!patientId) return {};
+
+    try {
+      const res = await patientApi.getVitalsHistory(patientId, { limit: 1 });
+      const records = res?.data?.data?.vitals ?? res?.data?.data ?? [];
+
+      // Group latest value per metric type
+      const metrics = {};
+      for (const record of records) {
+        const type = record.type ?? record.metricType;
+        if (type && !metrics[type]) {
+          metrics[type] = {
+            current: {
+              value: record.value,
+              category: record.category ?? null,
+            },
+            history: [],
+          };
+        }
+      }
+      return metrics;
+    } catch {
+      return {};
+    }
+  },
+
+  // Returns summary analytics: { summary: { activeMedications, activeConditions, recentCalculations }, trends: {} }
+  getHealthAnalytics: async () => {
+    const patientId = await getStoredPatientId();
+    if (!patientId) return null;
+
+    try {
+      const res = await patientApi.getVitalsHistory(patientId, { limit: 20 });
+      const records = res?.data?.data?.vitals ?? res?.data?.data ?? [];
+
+      // Simple derivative analytics from available data
+      const uniqueTypes = new Set(records.map((r) => r.type ?? r.metricType).filter(Boolean));
+      return {
+        summary: {
+          activeMedications: 0,   // placeholder — wire to medication endpoint when available
+          activeConditions: 0,    // placeholder
+          recentCalculations: uniqueTypes.size,
+        },
+        trends: {},
+      };
+    } catch {
+      return null;
+    }
+  },
+};
+
+// ─── HealthActivityService ────────────────────────────────────────────────────
+// Tracks recently visited health sections using AsyncStorage so MyHealth.js
+// can show "Recently Visited" quick actions without a dedicated backend endpoint.
+const ACTIVITY_LOG_KEY = 'health_activity_log';
+const MAX_ACTIVITIES = 20;
+
+const DEFAULT_QUICK_ACTIONS = [
+  { id: 'qa_medication', icon: '💊', text: 'Medications', screen: 'MedicationManagement', params: {} },
+  { id: 'qa_condition', icon: '🏥', text: 'Conditions', screen: 'ConditionManagement', params: {} },
+  { id: 'qa_bmi', icon: '⚖️', text: 'BMI Check', screen: 'BMICalculator', params: {} },
+  { id: 'qa_consult', icon: '👩‍⚕️', text: 'Consult', screen: 'ConsultationHome', params: {} },
+];
+
+export const HealthActivityService = {
+  recordActivity: async (activityType, screen, params = {}) => {
+    try {
+      const raw = await AsyncStorage.getItem(ACTIVITY_LOG_KEY);
+      const log = raw ? JSON.parse(raw) : [];
+      log.unshift({ activityType, screen, params, timestamp: Date.now() });
+      await AsyncStorage.setItem(
+        ACTIVITY_LOG_KEY,
+        JSON.stringify(log.slice(0, MAX_ACTIVITIES))
+      );
+    } catch {
+      // non-critical
+    }
+  },
+
+  getQuickActions: async (count = 4) => {
+    try {
+      const raw = await AsyncStorage.getItem(ACTIVITY_LOG_KEY);
+      const log = raw ? JSON.parse(raw) : [];
+
+      if (log.length === 0) return DEFAULT_QUICK_ACTIONS.slice(0, count);
+
+      // Deduplicate by screen, keep most recent
+      const seen = new Set();
+      const recent = [];
+      for (const entry of log) {
+        if (!seen.has(entry.screen)) {
+          seen.add(entry.screen);
+          recent.push({
+            id: `recent_${entry.screen}`,
+            icon: '🕐',
+            text: entry.screen.replace(/([A-Z])/g, ' $1').trim(),
+            screen: entry.screen,
+            params: entry.params ?? {},
+          });
+        }
+        if (recent.length >= count) break;
+      }
+
+      return recent.length > 0 ? recent : DEFAULT_QUICK_ACTIONS.slice(0, count);
+    } catch {
+      return DEFAULT_QUICK_ACTIONS.slice(0, count);
+    }
+  },
+};
+
 // Export default axios for raw calls if needed
 export default api;

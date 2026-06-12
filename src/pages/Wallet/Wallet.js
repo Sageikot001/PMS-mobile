@@ -1,57 +1,59 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { patientApi } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Wallet = () => {
   const navigation = useNavigation();
-  const route = useRoute();
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [balance, setBalance] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  // Calculate balance from transactions
-  const calculateBalance = (transactionsList) => {
-    return transactionsList.reduce((total, transaction) => {
-      // Add for credits, subtract for debits
-      if (transaction.type === 'credit') {
-        return total + transaction.amount;
-      } else {
-        return total - transaction.amount;
-      }
+  // Calculate balance from a list of payment records
+  const calculateBalance = (list) =>
+    list.reduce((total, t) => {
+      const amount = typeof t.amount === 'number' ? t.amount : 0;
+      return t.type === 'credit' ? total + amount : total - amount;
     }, 0);
-  };
 
-  // Load transactions and calculate balance
+  // Load payments from backend; fall back to empty list on error
   const loadTransactionsAndBalance = async () => {
+    const patientId = user?.patient?._id ?? user?.patientId ?? null;
+    if (!patientId) return;
+
+    setLoading(true);
     try {
-      const storedTransactions = await AsyncStorage.getItem('transactions');
-      if (storedTransactions) {
-        const parsedTransactions = JSON.parse(storedTransactions);
-        setTransactions(parsedTransactions);
-        
-        // Calculate and set balance
-        const calculatedBalance = calculateBalance(parsedTransactions);
-        setBalance(calculatedBalance);
-      }
+      const res = await patientApi.getPayments(patientId, { limit: 50 });
+      const payments = res?.data?.data?.payments ?? res?.data?.data ?? [];
+
+      // Normalise backend payment records to the shape the UI expects:
+      // { id, description, date, amount, type: 'credit' | 'debit' }
+      const normalised = payments.map((p) => ({
+        id: p._id ?? p.id,
+        description: p.description ?? p.reason ?? p.type ?? 'Transaction',
+        date: p.createdAt ?? p.date,
+        amount: p.amount ?? 0,
+        type: p.type === 'credit' ? 'credit' : 'debit',
+      }));
+
+      setTransactions(normalised);
+      setBalance(calculateBalance(normalised));
     } catch (error) {
       console.error('Error loading wallet data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Check for new transactions whenever screen comes into focus
+  // Reload whenever the screen comes into focus
   useEffect(() => {
-    // Load initial data
     loadTransactionsAndBalance();
-
-    // Set up listener for when the component mounts
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadTransactionsAndBalance();
-    });
-
-    // Clean up the listener when component unmounts
+    const unsubscribe = navigation.addListener('focus', loadTransactionsAndBalance);
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, user]);
 
   return (
     <View style={styles.container}>
@@ -77,21 +79,23 @@ const Wallet = () => {
           </TouchableOpacity>
         </View>
 
-        {transactions.length > 0 ? (
+        {loading ? (
+          <ActivityIndicator size="large" color="#7E3AF2" style={{ marginTop: 40 }} />
+        ) : transactions.length > 0 ? (
           <FlatList
             data={transactions}
             keyExtractor={item => item.id}
-            renderItem={({item}) => (
+            renderItem={({ item }) => (
               <View style={styles.transactionItem}>
                 <View style={styles.transactionInfo}>
                   <Text style={styles.transactionDesc}>{item.description}</Text>
                   <Text style={styles.transactionDate}>
-                    {new Date(item.date).toLocaleDateString()}
+                    {item.date ? new Date(item.date).toLocaleDateString() : ''}
                   </Text>
                 </View>
                 <Text style={[
                   styles.transactionAmount,
-                  item.type === 'credit' ? styles.creditAmount : styles.debitAmount
+                  item.type === 'credit' ? styles.creditAmount : styles.debitAmount,
                 ]}>
                   {item.type === 'credit' ? '+' : '-'}₦{item.amount.toFixed(2)}
                 </Text>
@@ -101,14 +105,9 @@ const Wallet = () => {
           />
         ) : (
           <View style={styles.emptyTransactions}>
-            {/* <Image 
-              source={ ('../../assets/card-icon.png')}
-              style={styles.emptyIcon}
-              resizeMode="contain"
-            /> */}
             <Text style={styles.emptyTitle}>No recent transactions</Text>
             <Text style={styles.emptySubtitle}>You have no transaction history</Text>
-          </View> 
+          </View>
         )}
       </View>
     </View>
